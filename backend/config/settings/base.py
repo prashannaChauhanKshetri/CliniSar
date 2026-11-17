@@ -5,6 +5,7 @@ so no secret is ever written in the code. See .env.example for the full list.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # backend/ folder (this file is backend/config/settings/base.py).
@@ -35,6 +36,8 @@ THIRD_PARTY_APPS = [
     "corsheaders",
     "django_filters",
     "drf_spectacular",
+    # Remembers used and logged-out refresh tokens so they cannot be used again.
+    "rest_framework_simplejwt.token_blacklist",
 ]
 
 LOCAL_APPS = [
@@ -52,6 +55,8 @@ LOCAL_APPS = [
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 MIDDLEWARE = [
+    # First, so it times the whole request and tags every response.
+    "apps.common.middleware.RequestLogMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -121,8 +126,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # Which front-end addresses the browser allows to call this API.
 CORS_ALLOWED_ORIGINS = env_list("CORS_ALLOWED_ORIGINS")
 CORS_ALLOW_CREDENTIALS = True
+# Lets the front end read the request id of a failed call, to show in error messages.
+CORS_EXPOSE_HEADERS = ["X-Request-ID"]
 
 REST_FRAMEWORK = {
+    # Every request proves who it is with a JWT access token in the Authorization header.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    # Used by LoginRateThrottle: at most 5 login attempts per minute from one IP address.
+    "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
@@ -134,4 +147,33 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "CliniSar API",
     "DESCRIPTION": "Multi-tenant clinic management system for clinics in Nepal.",
     "VERSION": "1.0.0",
+}
+
+SIMPLE_JWT = {
+    # Short-lived token sent with every request; kept only in the browser's memory.
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    # Long-lived token kept in an httpOnly cookie; only used to get a new access token.
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    # Each refresh returns a NEW refresh token and blacklists the old one, so a stolen
+    # refresh token stops working as soon as the real user refreshes.
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+}
+
+# The cookie that carries the refresh token. JavaScript cannot read it (httpOnly) and
+# the browser only sends it to the auth endpoints (path) of the same site (Strict).
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SECURE = True  # HTTPS only; dev.py turns this off for http://localhost
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {"format": "{asctime} {levelname} {name} {message}", "style": "{"},
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "simple"},
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
 }

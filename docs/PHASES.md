@@ -136,3 +136,74 @@ Node 26 (LTS), React 19, Vite 8, Tailwind CSS 4, TypeScript 6.0.
 
 - No API endpoints, serializers or permissions (phases 2 to 7).
 - File type and size checks on uploads come with the upload endpoints in phase 7.
+
+## Phase 2 - Authentication, permissions, request logging
+
+### What was built
+
+- **Five endpoints** under `/api/v1/auth/`:
+  - `POST login/` - email and password in; access token and user details out.
+  - `POST refresh/` - uses the refresh cookie to return a new access token.
+  - `POST logout/` - blacklists the refresh token and removes the cookie.
+  - `POST change-password/` - needs the current password.
+  - `GET, PATCH me/` - read or edit your own name and phone.
+- **Permission classes** in `apps/common/permissions.py`: `IsClinicAdmin`, `IsStaff`,
+  `IsDoctor`, `IsPharmacist`, `IsLabTechnician` and the combination `IsAdminOrStaff`.
+- **`RequestLogMiddleware`**: adds an `X-Request-ID` header to every response and logs
+  method, path, status code and duration.
+- There is no `register/` endpoint, because patients do not log in.
+
+### How a session works
+
+1. Login checks the password and creates two tokens.
+2. The **access token** (15 minutes) is returned in the JSON body. The front end keeps
+   it in memory and sends it as `Authorization: Bearer ...` with every request.
+3. The **refresh token** (7 days) is set as a cookie. It is `httpOnly` (JavaScript
+   cannot read it, so a script injected into the page cannot steal it), `Secure`
+   (HTTPS only), `SameSite=Strict` (other websites cannot make the browser send it)
+   and limited to the path `/api/v1/auth/`.
+4. When the access token expires, the front end calls `refresh/`. The server returns a
+   new access token and a **new** refresh cookie, and blacklists the old refresh
+   token. So each refresh token works once; a stolen copy becomes useless.
+5. Logout blacklists the current refresh token and deletes the cookie.
+
+### Why it is built this way
+
+- **Two tokens** balance safety and comfort: the token that travels with every
+  request lives only 15 minutes, and the long-lived one is locked in a cookie that
+  scripts cannot reach.
+- **Rules are in `services.py`**, views only read the request and build the response.
+- **One error message for a wrong email and a wrong password**, so nobody can find out
+  which emails have accounts.
+- **Login is limited to 5 attempts per minute per IP address** to slow down password
+  guessing.
+- **`me/` cannot change email, role or clinic.** Those fields are read-only in the
+  serializer, so a user cannot promote themself or move to another clinic.
+- **Permission classes answer "may this role use this endpoint?"** Which rows a user
+  sees is handled separately by `get_queryset()` in later phases.
+- **The request id** lets you match a user's error report to one line in the log.
+
+### Decisions to know about
+
+- **The super admin cannot log in to the API**, only to `/admin/`, as the brief says
+  the super admin uses the admin site only.
+- **Users of a deactivated clinic cannot log in.** This gives `Clinic.is_active` a
+  meaning. Tokens they already hold keep working until they expire.
+- **Changing the password does not log out other devices.**
+- **The login limit is counted in each server process's memory** (Django's default
+  cache), because Redis is not allowed. With several Gunicorn workers the real limit
+  is 5 per worker. Phase 11 can move the counter into the database if you want an
+  exact limit.
+- **`dev.py` switches the cookie's `Secure` flag off**, because browsers do not store
+  Secure cookies over plain `http://localhost`.
+
+### Files to read first
+
+1. `backend/apps/accounts/services.py` - the login, refresh and logout rules.
+2. `backend/apps/accounts/views.py` - the five thin views.
+3. `backend/apps/accounts/cookies.py` - how the refresh cookie is set and cleared.
+4. `backend/config/settings/base.py` - `REST_FRAMEWORK`, `SIMPLE_JWT` and the
+   `REFRESH_COOKIE_*` settings near the bottom.
+5. `backend/apps/common/permissions.py` - the role classes.
+6. `backend/apps/common/middleware.py` - the request log.
+7. `backend/apps/accounts/tests/test_auth.py` - each test name is one rule.
