@@ -4,7 +4,7 @@ These answer "may this ROLE use this endpoint at all?". Which ROWS a user sees i
 separate question, answered by get_queryset() in each viewset.
 """
 
-from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from apps.accounts.models import User
 
@@ -55,3 +55,13 @@ class IsAdminOrStaff(RolePermission):
     """The clinic admin can do everything front-desk staff can do."""
 
     allowed_roles = (Role.CLINIC_ADMIN, Role.STAFF)
+
+
+class ReadOnly(BasePermission):
+    """Any logged-in user, but only for reading (GET). Combine it with a role class,
+    e.g. `IsClinicAdmin | ReadOnly` = everyone may look, only the admin may change.
+    """
+
+    def has_permission(self, request, view) -> bool:
+        user = request.user
+        return bool(user and user.is_authenticated and request.method in SAFE_METHODS)

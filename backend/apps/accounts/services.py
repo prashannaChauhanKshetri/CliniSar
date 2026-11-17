@@ -1,12 +1,15 @@
-"""Business rules for logging in, refreshing a session and logging out."""
+"""Business rules for sessions (login, refresh, logout) and for doctor accounts."""
 
 from django.contrib.auth import authenticate
+from django.db import transaction
 from rest_framework.exceptions import APIException, AuthenticationFailed
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import User
+from apps.clinics.models import Clinic
+
+from .models import DoctorProfile, User
 
 
 class SessionError(APIException):
@@ -63,3 +66,38 @@ def revoke_refresh_token(refresh_token: str | None) -> None:
         RefreshToken(refresh_token).blacklist()
     except TokenError:
         pass
+
+
+@transaction.atomic
+def create_doctor(
+    clinic: Clinic, user_data: dict, password: str, profile_data: dict
+) -> DoctorProfile:
+    """Create a doctor's login and profile together, or neither if something fails."""
+    user = User.objects.create_user(
+        password=password, role=User.Role.DOCTOR, clinic=clinic, **user_data
+    )
+    return DoctorProfile.objects.create(user=user, **profile_data)
+
+
+@transaction.atomic
+def update_doctor(
+    doctor: DoctorProfile, user_data: dict, password: str | None, profile_data: dict
+) -> DoctorProfile:
+    """Update the doctor's User row and DoctorProfile row in one step."""
+    user = doctor.user
+    for field, value in user_data.items():
+        setattr(user, field, value)
+    if password:
+        user.set_password(password)
+    user.save()
+
+    for field, value in profile_data.items():
+        setattr(doctor, field, value)
+    doctor.save()
+    return doctor
+
+
+def deactivate_user(user: User) -> None:
+    """Switch a login off. Users are never deleted, so their history stays intact."""
+    user.is_active = False
+    user.save(update_fields=["is_active", "updated_at"])

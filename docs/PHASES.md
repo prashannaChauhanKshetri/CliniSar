@@ -207,3 +207,84 @@ Node 26 (LTS), React 19, Vite 8, Tailwind CSS 4, TypeScript 6.0.
 5. `backend/apps/common/permissions.py` - the role classes.
 6. `backend/apps/common/middleware.py` - the request log.
 7. `backend/apps/accounts/tests/test_auth.py` - each test name is one rule.
+
+## Phase 3 - TenantViewSet and the clinic endpoints
+
+### What was built
+
+- **`TenantViewSet`** (`apps/common/views.py`): the base class for every clinic-owned
+  endpoint. It does two things:
+  - `get_queryset()` filters every query by `request.user.clinic`;
+  - `perform_create()` stamps `request.user.clinic` on every new row.
+- **`TenantPrimaryKeyRelatedField`** (`apps/common/serializers.py`): a serializer field
+  for links such as "doctor's department" that only accepts objects of your own clinic.
+- **Endpoints** under `/api/v1/`:
+
+  | Endpoint        | Who may use it                                                  |
+  | --------------- | --------------------------------------------------------------- |
+  | `clinic/`       | GET: everyone. PATCH: clinic admin (name, address, PAN, receipt width, VAT). |
+  | `departments/`  | GET: everyone. Create, edit, delete: clinic admin.              |
+  | `staff/`        | Clinic admin only. Roles STAFF, PHARMACIST, LAB_TECHNICIAN.     |
+  | `doctors/`      | GET: everyone. Create, edit, delete: clinic admin.              |
+  | `patients/`     | Admin and staff: full CRUD. Doctor: read own patients only.     |
+
+- **The tenant isolation test** (`apps/common/tests/test_tenant_isolation.py`).
+
+### How tenant isolation works
+
+1. The user's clinic is read from the database row of the logged-in user, which comes
+   from the verified JWT. The client cannot change it.
+2. No serializer has a `clinic` field, so a `clinic` value sent in a request body is
+   ignored. A test sends clinic B's id and checks the row still lands in clinic A.
+3. Detail URLs look the object up inside the already-filtered queryset. Another
+   clinic's id is simply "not found", so the answer is **404**, not 403. A 403 would
+   tell an attacker that the id exists.
+4. Links to other objects (for now: a doctor's department) use
+   `TenantPrimaryKeyRelatedField`, so another clinic's department id is rejected.
+5. The isolation test runs for every tenant endpoint: log in as clinic A, check that
+   clinic B's object is missing from the list and that GET, PATCH and DELETE on it
+   return 404. Each later phase adds its endpoints to the `ENDPOINTS` list.
+
+### Why it is built this way
+
+- **One base class** means isolation is written once. A new endpoint is safe by
+  inheriting it, and the test list makes a forgotten endpoint easy to spot.
+- **Not in middleware**: DRF checks the JWT inside the view, after middleware has
+  run, so middleware does not yet know who the user is.
+- **`tenant_field`**: `DoctorProfile` has no clinic column of its own; its clinic is
+  its user's clinic, so `DoctorViewSet` sets `tenant_field = "user__clinic"`.
+- **A doctor is one flat JSON object** (email, name, fee, department...), although it
+  is stored as two rows (`User` + `DoctorProfile`). `services.create_doctor()` makes
+  both inside one transaction, so a failure never leaves half a doctor behind.
+- **Users are never deleted.** `DELETE staff/<id>/` and `DELETE doctors/<id>/`
+  deactivate the login (`is_active = False`) so history (who booked, who dispensed)
+  stays intact. PATCH `is_active: true` brings them back.
+- **Deleting a patient who has appointments returns 409**, not a server error. The
+  database blocks it (`PROTECT`) and a small exception handler
+  (`apps/common/exceptions.py`) turns that into a clear message.
+- **`ReadOnly` permission** combines with role classes: `IsClinicAdmin | ReadOnly`
+  means "everyone may look, only the admin may change".
+- **Row-level rule for doctors**: `PatientViewSet.get_queryset()` narrows the list to
+  patients who have an appointment with the logged-in doctor.
+
+### Decisions to know about
+
+- **Every role may read `clinic/`, `departments/` and `doctors/`.** Print pages need
+  the clinic's details, and booking needs the doctor list.
+- **The admin sets the first password of a new staff member or doctor**, and can set
+  a new one with PATCH `password` (there is no email, so no reset link). Users change
+  it themselves at `auth/change-password/`.
+- **The clinic `slug` cannot be changed through the API.** It is the clinic's fixed
+  identifier and is set by the super admin.
+- **`?search=` is enabled** on departments, staff, doctors and patients (name, phone),
+  because the patient and doctor pages need a search box.
+
+### Files to read first
+
+1. `backend/apps/common/views.py` - `TenantViewSet`, about 20 lines.
+2. `backend/apps/common/tests/test_tenant_isolation.py` - the isolation test.
+3. `backend/apps/common/serializers.py` - `TenantPrimaryKeyRelatedField`.
+4. `backend/apps/accounts/views.py` - `StaffViewSet`, `DoctorViewSet`, `PatientViewSet`.
+5. `backend/apps/accounts/serializers.py` - `DoctorSerializer` (one JSON object, two tables).
+6. `backend/apps/accounts/services.py` - `create_doctor`, `update_doctor`, `deactivate_user`.
+7. `backend/apps/clinics/views.py` - `ClinicView` and `DepartmentViewSet`.

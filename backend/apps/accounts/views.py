@@ -1,4 +1,7 @@
-"""Authentication endpoints. The rules live in services.py; these views stay thin."""
+"""Authentication endpoints and the staff, doctor and patient endpoints.
+
+The rules live in services.py; these views stay thin.
+"""
 
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
@@ -7,13 +10,20 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.permissions import IsAdminOrStaff, IsClinicAdmin, IsDoctor, ReadOnly
+from apps.common.views import TenantViewSet
+
 from . import services
 from .cookies import clear_refresh_cookie, set_refresh_cookie
+from .models import DoctorProfile, PatientProfile, User
 from .serializers import (
     AccessTokenSerializer,
     ChangePasswordSerializer,
+    DoctorSerializer,
     LoginResponseSerializer,
     LoginSerializer,
+    PatientSerializer,
+    StaffSerializer,
     UserSerializer,
 )
 from .throttles import LoginRateThrottle
@@ -101,3 +111,54 @@ class MeView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         """Always the requester: there is no id in the URL to tamper with."""
         return self.request.user
+
+
+class StaffViewSet(TenantViewSet):
+    """CRUD staff/: the clinic admin manages front-desk staff, pharmacists and lab technicians."""
+
+    queryset = User.objects.filter(role__in=StaffSerializer.STAFF_ROLES)
+    serializer_class = StaffSerializer
+    permission_classes = [IsClinicAdmin]
+    filterset_fields = ["role", "is_active"]
+    search_fields = ["first_name", "last_name", "email"]
+
+    def perform_destroy(self, instance: User) -> None:
+        """DELETE deactivates the login instead of removing the row."""
+        services.deactivate_user(instance)
+
+
+class DoctorViewSet(TenantViewSet):
+    """CRUD doctors/: everyone may list doctors; only the clinic admin may change them."""
+
+    queryset = DoctorProfile.objects.select_related("user", "department")
+    serializer_class = DoctorSerializer
+    permission_classes = [IsClinicAdmin | ReadOnly]
+    # A DoctorProfile has no clinic column of its own; its clinic is its user's clinic.
+    tenant_field = "user__clinic"
+    filterset_fields = ["department"]
+    search_fields = ["user__first_name", "user__last_name", "specialization"]
+
+    def perform_create(self, serializer) -> None:
+        """The serializer sets the clinic on the new User, so nothing is passed here."""
+        serializer.save()
+
+    def perform_destroy(self, instance: DoctorProfile) -> None:
+        """DELETE deactivates the doctor's login instead of removing the row."""
+        services.deactivate_user(instance.user)
+
+
+class PatientViewSet(TenantViewSet):
+    """CRUD patients/: admin and staff manage patients; a doctor may read their own."""
+
+    queryset = PatientProfile.objects.all()
+    serializer_class = PatientSerializer
+    permission_classes = [IsAdminOrStaff | (IsDoctor & ReadOnly)]
+    search_fields = ["first_name", "last_name", "phone"]
+
+    def get_queryset(self):
+        """Row-level rule: a doctor only sees patients who have an appointment with them."""
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated and user.role == User.Role.DOCTOR:
+            queryset = queryset.filter(appointments__doctor__user=user).distinct()
+        return queryset

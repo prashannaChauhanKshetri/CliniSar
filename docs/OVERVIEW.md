@@ -114,7 +114,7 @@ locked. There are no refunds.
 | 0   | Scaffold, Docker Compose, linters, CI                | Done   |
 | 1   | Models, migrations, admin, factories                 | Done   |
 | 2   | Authentication, permissions, request log middleware  | Done   |
-| 3   | TenantViewSet, clinic endpoints, tenant isolation test |      |
+| 3   | TenantViewSet, clinic endpoints, tenant isolation test | Done |
 | 4   | Schedules, slots, appointments                       |        |
 | 5   | Billing: invoices, numbering, VAT, pay, cancel       |        |
 | 6   | Prescriptions and pharmacy                           |        |
