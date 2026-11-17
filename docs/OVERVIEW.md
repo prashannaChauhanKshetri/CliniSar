@@ -112,7 +112,7 @@ locked. There are no refunds.
 | #   | What                                                 | Status |
 | --- | ---------------------------------------------------- | ------ |
 | 0   | Scaffold, Docker Compose, linters, CI                | Done   |
-| 1   | Models, migrations, admin, factories                 |        |
+| 1   | Models, migrations, admin, factories                 | Done   |
 | 2   | Authentication, permissions, request log middleware  |        |
 | 3   | TenantViewSet, clinic endpoints, tenant isolation test |      |
 | 4   | Schedules, slots, appointments                       |        |

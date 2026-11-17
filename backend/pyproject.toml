@@ -9,6 +9,9 @@ extend-exclude = ["migrations"]
 # E/W: style, F: real mistakes, I: import order, B: likely bugs, UP: modern syntax,
 # DJ: Django-specific checks.
 select = ["E", "W", "F", "I", "B", "UP", "DJ"]
+# DJ001 forbids null on text fields, but the data model needs "no value yet" (null)
+# for LabOrder.flag and Invoice.payment_method.
+ignore = ["DJ001"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.dev"

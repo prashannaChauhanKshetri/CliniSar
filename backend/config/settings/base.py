@@ -92,6 +92,9 @@ DATABASES = {
     }
 }
 
+# The project uses its own User model (login by email, with a role and a clinic).
+AUTH_USER_MODEL = "accounts.User"
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {

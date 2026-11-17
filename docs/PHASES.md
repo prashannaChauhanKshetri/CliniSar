@@ -73,3 +73,66 @@ Node 26 (LTS), React 19, Vite 8, Tailwind CSS 4, TypeScript 6.0.
   The Compose file passes `docker-compose config`, and the back-end tests were run
   against a local PostgreSQL 17 instead.
 - CI has not run yet because the repository has not been pushed to GitHub.
+
+## Phase 1 - Models, migrations, admin, factories
+
+### What was built
+
+- **All database tables** as Django models, one `models.py` per app, with the first
+  migration for each app.
+- **Django admin** screens for every model, so the super admin can create clinics and
+  each clinic's first CLINIC_ADMIN.
+- **Factories** (`tests/factories.py` in each app): one line in a test builds a valid
+  object together with everything it needs.
+- **Tests** (96 in total) for the rules the database enforces.
+
+### Why it is built this way
+
+- **`BaseModel` and `TenantModel`** (`apps/common/models.py`) are abstract classes.
+  `BaseModel` gives every table a UUID key and timestamps. `TenantModel` adds the
+  `clinic` column. A test lists exactly which models are clinic-owned, so a new table
+  cannot forget the clinic column unnoticed.
+- **UUID keys** instead of 1, 2, 3: an id in a URL cannot be guessed, and it reveals
+  nothing about how many records a clinic has.
+- **`money_field()`** is one small function that returns the same `DecimalField` for
+  every rupee amount. Decimals are exact; floats are not (0.1 + 0.2 is not 0.3).
+- **Custom `User`**: login is by email, so `username` is removed and a small
+  `UserManager` creates users. This must be done before the first migration, because
+  changing the user model later is very hard.
+- **Rules are enforced by the database, not only by Python code.** Even a bug in a
+  view cannot break them:
+  - a user without a clinic must be the super admin;
+  - a schedule must start before it ends;
+  - one doctor cannot have two non-cancelled appointments at the same date and time
+    (a *conditional* unique constraint, so a cancelled slot can be booked again);
+  - a batch quantity can never be negative; a stock movement can never be zero;
+  - an invoice points to exactly one of appointment, prescription or lab order;
+  - a discount cannot be larger than the subtotal;
+  - invoice numbers are unique per clinic.
+- **`on_delete=PROTECT`** on medical and money links: a patient with appointments or
+  a medicine that was prescribed cannot be deleted by accident.
+- **`Medicine` has no stock column.** `Medicine.objects.with_available_stock()` adds
+  the number in the same SQL query by summing unexpired batches. A test proves a list
+  of medicines needs only one query.
+- **`StockMovement` refuses to be edited or deleted** (its `save()` and `delete()`
+  raise an error), because it is the permanent history of the stock.
+- **`PatientProfile` is a clinic-owned record**, not a login (see the decision at the
+  top of this file). It keeps the name from the brief.
+- **Weekday numbers** are Monday = 0 to Sunday = 6, the same as Python's
+  `date.weekday()`, so no conversion is needed when calculating slots.
+
+### Files to read first
+
+1. `backend/apps/common/models.py` - `BaseModel`, `TenantModel`, `money_field`, `AuditLog`.
+2. `backend/apps/clinics/models.py` - `Clinic` (the tenant) and `Department`.
+3. `backend/apps/accounts/models.py` - `User`, `UserManager`, `DoctorProfile`, `PatientProfile`.
+4. `backend/apps/scheduling/models.py` - look at the conditional unique constraint.
+5. `backend/apps/pharmacy/models.py` - `with_available_stock()` and `StockMovement`.
+6. `backend/apps/billing/models.py` - the two check constraints on `Invoice`.
+7. `backend/apps/accounts/tests/factories.py` - how factories keep one clinic.
+8. Any `tests/test_models.py` - each test name is one rule in plain words.
+
+### Not included yet
+
+- No API endpoints, serializers or permissions (phases 2 to 7).
+- File type and size checks on uploads come with the upload endpoints in phase 7.
