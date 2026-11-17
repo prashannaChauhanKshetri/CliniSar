@@ -1,0 +1,6 @@
+# Extra packages needed only for development: tests and linting.
+-r requirements.txt
+pytest==9.2.0
+pytest-django==4.14.0
+factory-boy==3.3.3
+ruff==0.17.5

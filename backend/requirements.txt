@@ -1,0 +1,10 @@
+# Packages needed to run the back end (also in production).
+Django==5.2.19
+djangorestframework==3.18.3
+djangorestframework-simplejwt==5.5.1
+django-cors-headers==4.9.0
+django-filter==26.2
+drf-spectacular==0.30.0
+django-storages[s3]==1.14.6
+psycopg[binary]==3.3.9
+gunicorn==27.0.1

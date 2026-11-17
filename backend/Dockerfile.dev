@@ -1,0 +1,15 @@
+# Development image for the back end. The production Dockerfile (Gunicorn) comes in phase 11.
+FROM python:3.14-slim
+
+# Do not write .pyc files, and print logs straight away.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY requirements.txt requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+COPY . .
+
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
