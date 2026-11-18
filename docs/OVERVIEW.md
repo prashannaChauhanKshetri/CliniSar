@@ -125,7 +125,7 @@ locked. There are no refunds.
 | 2   | Authentication, permissions, request log middleware  | Done   |
 | 3   | TenantViewSet, clinic endpoints, tenant isolation test | Done |
 | 4   | Schedules, slots, appointments, walk-ins             | Done   |
-| 5   | Billing: invoices, numbering, VAT, pay, cancel       |        |
+| 5   | Billing: invoices, numbering, VAT, pay, cancel       | Done   |
 | 6   | Prescriptions and pharmacy                           |        |
 | 7   | Lab, documents, audit log                            |        |
 | 8   | Dashboard summary, demo data command                 |        |

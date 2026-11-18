@@ -25,6 +25,9 @@ class ClinicSerializer(serializers.ModelSerializer):
             "vat_on_consultation",
             "vat_on_pharmacy",
             "vat_on_lab",
+            "lab_bills_separately",
+            "lab_name",
+            "lab_pan_number",
         ]
         # The slug is the clinic's permanent identifier, set by the super admin.
         read_only_fields = ["id", "slug"]

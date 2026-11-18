@@ -14,6 +14,7 @@ import pytest
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import DoctorProfileFactory, PatientProfileFactory, UserFactory
+from apps.billing.tests.factories import InvoiceFactory
 from apps.clinics.models import Clinic
 from apps.clinics.tests.factories import ClinicFactory, DepartmentFactory
 from apps.scheduling.tests.factories import AppointmentFactory, DoctorScheduleFactory
@@ -44,6 +45,11 @@ ENDPOINTS = [
         "/api/v1/appointments/",
         lambda clinic: AppointmentFactory(clinic=clinic),
         detail_requests=[("get", ""), ("post", "cancel/"), ("post", "complete/")],
+    ),
+    Endpoint(
+        "/api/v1/invoices/",
+        lambda clinic: InvoiceFactory(clinic=clinic),
+        detail_requests=[("get", ""), ("post", "pay/"), ("post", "cancel/")],
     ),
 ]
 

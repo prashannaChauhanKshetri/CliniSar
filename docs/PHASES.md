@@ -449,3 +449,104 @@ The local database `clinisar` keeps the made-up "Manual Check Clinic" (users
 5. `backend/apps/scheduling/permissions.py` - who may change a schedule.
 6. `backend/apps/scheduling/tests/test_slots.py` and `test_appointments_api.py`.
 7. `backend/apps/accounts/serializers.py` - `PatientSerializer` (age entry).
+
+## Phase 5 - Billing
+
+### What was built
+
+- **Invoice service** (`apps/billing/services.py`): one place for all money rules.
+- **Endpoints**:
+
+  | Endpoint                       | Who                                                       |
+  | ------------------------------ | --------------------------------------------------------- |
+  | `GET invoices/`, `invoices/<id>/` | Admin and staff: all. Pharmacist: PHARMACY only. Lab technician: LAB only. Doctor: no access. |
+  | `POST invoices/<id>/pay/`      | Same roles, on the invoices they can see. Body: `payment_method`, optional `discount`. |
+  | `POST invoices/<id>/cancel/`   | Admin and staff only. Body: `reason`.                     |
+
+  There is no `POST invoices/`, PATCH or DELETE (405): invoices are made by the system.
+- **Booking a visit or adding a walk-in creates a CONSULTATION invoice** at the
+  doctor's fee, inside the same transaction. A failed booking (409) leaves no bill.
+- **Cancelling a visit cancels its bill if it is UNPAID.** A PAID bill stays PAID.
+- **Separate lab bill book**: clinic settings `lab_bills_separately`, `lab_name`,
+  `lab_pan_number`.
+
+### The invoice maths (`calculate_totals`)
+
+```
+subtotal   = sum of line totals            (line total = quantity x unit price)
+taxable    = subtotal - discount           (discount must be 0 ... subtotal)
+vat_amount = taxable x vat_rate / 100      rounded to paisa, 0.5 always up
+total      = taxable + vat_amount
+```
+
+The same function runs when the invoice is created (discount 0) and again when it
+is paid with a discount. The client never sends subtotal, VAT or total; extra fields
+in the request are ignored. `Decimal` is used everywhere, never `float`.
+
+Example: fee Rs. 700, VAT 13% -> VAT 91.00, total 791.00. Paid with Rs. 100
+discount -> taxable 600.00, VAT 78.00, total 678.00.
+
+### VAT
+
+- The admin switches VAT on or off for each source (consultation, pharmacy, lab) and
+  sets one rate (13, 5, ...).
+- At creation the invoice copies `vat_rate` = the clinic rate if that source's switch
+  is on, otherwise 0.
+- Changing the settings later never changes existing invoices, because each invoice
+  keeps its own rate.
+
+### Invoice numbers
+
+- `take_next_number()` locks the clinic row (`select_for_update`), adds 1 to the
+  counter and uses it. Two invoices created at the same moment wait for each other,
+  so numbers never repeat or skip.
+- Each invoice has a `series`. Normally everything is in the CLINIC series (1, 2, 3
+  ...). When `lab_bills_separately` is on, LAB invoices use the LAB series with their
+  own counter, printed with the lab's name and PAN (as in the real clinic, where the
+  lab is a separate business).
+- The unique constraint (clinic, series, number) is the backstop.
+- Each invoice also copies `issuer_name` and `issuer_pan`, so renaming the clinic or
+  changing its PAN later does not change old bills.
+
+### Two bugs the tests found (and the fixes)
+
+1. **Saving clinic settings could roll back the invoice counter.** A settings screen
+   saves a copy of the clinic read a moment earlier. If a bill was created in
+   between, saving that copy wrote the old counter back, and the next bill number
+   repeated. Fix: `Clinic.save()` never writes the two counters unless they are named
+   in `update_fields`, which only the invoice service does.
+2. **Cancelling a visit could crash if its bill had just been paid.** The status was
+   checked before locking the row. Fix: lock first, then check.
+
+### Decisions to know about
+
+- **No `cancelled_by` on invoices** (the brief has none); the reason is stored.
+- **The invoice list is ordered newest first** (`created_at`), because with two
+  series the numbers alone do not give one order.
+- **A doctor with fee 0 still gets a Rs. 0 invoice**, so every visit has a bill.
+- **"Amount in words" and Rs./Ps. columns** are print-only and come in phase 10.
+
+### Manual check through the front-end dev server
+
+Run through `http://localhost:5173/api/...`:
+
+| Step | Result |
+| ---- | ------ |
+| Admin turns VAT on for consultations at 13% | 200 |
+| Staff books a visit with a Rs. 700 doctor | 201; bill created: 700.00 + VAT 91.00 = 791.00, UNPAID |
+| Pay by card, discount 100, plus a fake `total` in the body | 200; VAT 78.00, total 678.00, PAID, cashier recorded |
+| Pay again / cancel the paid bill | 400 / 400 |
+| Cancel the visit of the paid bill | visit CANCELLED, bill stays PAID |
+| Cancel another (unpaid) visit | its bill becomes CANCELLED with the reason |
+| Pharmacist: list / open the consultation bill | 0 rows / 404 |
+| Doctor opens invoices | 403 |
+| `POST invoices/` | 405 |
+
+### Files to read first
+
+1. `backend/apps/billing/services.py` - top to bottom; every money rule is here.
+2. `backend/apps/billing/models.py` - `Invoice` fields and constraints.
+3. `backend/apps/billing/views.py` - roles and the row-level rule by source.
+4. `backend/apps/clinics/models.py` - `Clinic.save()` and the counters.
+5. `backend/apps/scheduling/services.py` - where booking calls the invoice service.
+6. `backend/apps/billing/tests/test_services.py` - maths, VAT, numbering tests.

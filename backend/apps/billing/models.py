@@ -27,8 +27,18 @@ class Invoice(TenantModel):
         CARD = "CARD", "Card"
         WALLET = "WALLET", "Wallet"
 
-    # Sequential per clinic (1, 2, 3, ...), taken from Clinic.last_invoice_number.
+    class Series(models.TextChoices):
+        # The clinic's own bill book.
+        CLINIC = "CLINIC", "Clinic"
+        # The lab's separate bill book (only when Clinic.lab_bills_separately is on).
+        LAB = "LAB", "Lab"
+
+    series = models.CharField(max_length=10, choices=Series.choices, default=Series.CLINIC)
+    # Sequential per clinic and series (1, 2, 3, ...), taken from the clinic's counter.
     number = models.PositiveIntegerField()
+    # Who issued the bill, copied in at creation so later setting changes never alter it.
+    issuer_name = models.CharField(max_length=200)
+    issuer_pan = models.CharField(max_length=20, blank=True)
     patient = models.ForeignKey(
         "accounts.PatientProfile", on_delete=models.PROTECT, related_name="invoices"
     )
@@ -73,10 +83,10 @@ class Invoice(TenantModel):
     cancel_reason = models.TextField(blank=True)
 
     class Meta:
-        ordering = ["-number"]
+        ordering = ["-created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["clinic", "number"], name="unique_invoice_number_per_clinic"
+                fields=["clinic", "series", "number"], name="unique_invoice_number_per_series"
             ),
             models.CheckConstraint(
                 condition=(
@@ -92,6 +102,9 @@ class Invoice(TenantModel):
             ),
             models.CheckConstraint(
                 condition=Q(discount__lte=F("subtotal")), name="invoice_discount_not_above_subtotal"
+            ),
+            models.CheckConstraint(
+                condition=Q(discount__gte=0), name="invoice_discount_not_negative"
             ),
         ]
 

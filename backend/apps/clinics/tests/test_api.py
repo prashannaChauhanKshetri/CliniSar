@@ -169,3 +169,20 @@ def test_admin_sets_nepali_name_address_and_prescription_note(login_as) -> None:
     assert response.status_code == 200
     for field, value in data.items():
         assert response.data[field] == value
+
+
+def test_admin_sets_up_separate_lab_billing(login_as) -> None:
+    admin = UserFactory(role=Role.CLINIC_ADMIN)
+    data = {"lab_bills_separately": True, "lab_name": "Sample Path Lab", "lab_pan_number": "222"}
+    response = login_as(admin).patch(CLINIC, data)
+    assert response.status_code == 200
+    admin.clinic.refresh_from_db()
+    assert admin.clinic.lab_bills_separately is True
+    assert admin.clinic.lab_name == "Sample Path Lab"
+
+
+def test_lab_invoice_counter_cannot_be_set_through_the_api(login_as) -> None:
+    admin = UserFactory(role=Role.CLINIC_ADMIN)
+    login_as(admin).patch(CLINIC, {"last_lab_invoice_number": 50})
+    admin.clinic.refresh_from_db()
+    assert admin.clinic.last_lab_invoice_number == 0

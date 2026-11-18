@@ -17,6 +17,7 @@ class InvoiceFactory(factory.django.DjangoModelFactory):
 
     clinic = factory.SubFactory(ClinicFactory)
     number = factory.Sequence(lambda n: n + 1)
+    issuer_name = factory.SelfAttribute("clinic.name")
     appointment = factory.SubFactory(AppointmentFactory, clinic=factory.SelfAttribute("..clinic"))
     patient = factory.SelfAttribute("appointment.patient")
     source = Invoice.Source.CONSULTATION

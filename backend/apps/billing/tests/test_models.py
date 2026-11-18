@@ -77,7 +77,19 @@ def test_same_invoice_number_is_allowed_in_different_clinics() -> None:
 
 
 @pytest.mark.django_db
-def test_invoice_number_is_unique_inside_one_clinic() -> None:
+def test_invoice_number_is_unique_inside_one_clinic_and_series() -> None:
     invoice = InvoiceFactory(number=1)
     with pytest.raises(IntegrityError):
         InvoiceFactory(clinic=invoice.clinic, number=1)
+
+
+@pytest.mark.django_db
+def test_clinic_and_lab_series_may_both_have_number_1() -> None:
+    invoice = InvoiceFactory(number=1)
+    InvoiceFactory(clinic=invoice.clinic, number=1, series=Invoice.Series.LAB)
+
+
+@pytest.mark.django_db
+def test_discount_cannot_be_negative() -> None:
+    with pytest.raises(IntegrityError):
+        InvoiceFactory(discount=Decimal("-1.00"))

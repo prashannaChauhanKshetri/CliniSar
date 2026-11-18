@@ -5,6 +5,7 @@ from decimal import Decimal
 import pytest
 from django.db import IntegrityError
 
+from apps.clinics.models import Clinic
 from apps.clinics.tests.factories import ClinicFactory, DepartmentFactory
 
 
@@ -32,3 +33,17 @@ def test_department_name_is_unique_inside_one_clinic() -> None:
     department = DepartmentFactory(name="Cardiology")
     with pytest.raises(IntegrityError):
         DepartmentFactory(clinic=department.clinic, name="Cardiology")
+
+
+@pytest.mark.django_db
+def test_saving_an_old_copy_of_the_clinic_keeps_the_invoice_counters() -> None:
+    """A settings save must never roll back the invoice counters."""
+    old_copy = ClinicFactory()
+    Clinic.objects.filter(pk=old_copy.pk).update(last_invoice_number=7, last_lab_invoice_number=3)
+
+    old_copy.name = "Renamed"
+    old_copy.save()  # old_copy still holds 0 and 0 in memory
+
+    fresh = Clinic.objects.get(pk=old_copy.pk)
+    assert fresh.name == "Renamed"
+    assert (fresh.last_invoice_number, fresh.last_lab_invoice_number) == (7, 3)

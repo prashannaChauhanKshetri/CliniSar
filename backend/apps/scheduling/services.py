@@ -1,5 +1,8 @@
 """Business rules for schedules and visits: slot calculation, booking, walk-ins, status changes.
 
+Every new visit gets its CONSULTATION invoice inside the same transaction, so a
+visit never exists without its bill (and a failed booking leaves no bill behind).
+
 "Today" and "now" always mean Nepal time (settings.TIME_ZONE = "Asia/Kathmandu").
 """
 
@@ -11,6 +14,7 @@ from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
 from apps.accounts.models import DoctorProfile, PatientProfile, User
+from apps.billing import services as billing
 from apps.clinics.models import Clinic
 from apps.common.exceptions import Conflict
 
@@ -135,6 +139,7 @@ def book_appointment(
                 reason=reason,
                 booked_by=booked_by,
             )
+            billing.create_consultation_invoice(appointment)
     except IntegrityError as error:
         raise Conflict("This slot has just been booked. Please choose another time.") from error
     return appointment
@@ -174,6 +179,7 @@ def add_walk_in(
                 reason=reason,
                 booked_by=booked_by,
             )
+            billing.create_consultation_invoice(appointment)
     except IntegrityError as error:  # backstop: the unique constraint on queue_number
         raise Conflict("Please try again: the queue changed while saving.") from error
     return appointment
@@ -194,12 +200,14 @@ def lock_booked_appointment(appointment: Appointment) -> Appointment:
 
 @transaction.atomic
 def cancel_appointment(appointment: Appointment, *, user: User, reason: str) -> Appointment:
-    """Cancel a BOOKED appointment and record who cancelled it and why."""
+    """Cancel a BOOKED appointment, record who and why, and cancel its bill if unpaid."""
     locked = lock_booked_appointment(appointment)
     locked.status = Appointment.Status.CANCELLED
     locked.cancelled_by = user
     locked.cancel_reason = reason
     locked.save(update_fields=["status", "cancelled_by", "cancel_reason", "updated_at"])
+    invoice = getattr(locked, "invoice", None)
+    billing.cancel_unpaid_invoice_of(invoice, reason=f"Appointment cancelled: {reason}")
     return locked
 
 

@@ -13,7 +13,7 @@ class ClinicAdmin(admin.ModelAdmin):
     list_filter = ["is_active"]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ["name"]}
-    readonly_fields = ["last_invoice_number"]
+    readonly_fields = ["last_invoice_number", "last_lab_invoice_number"]
 
 
 @admin.register(Department)
