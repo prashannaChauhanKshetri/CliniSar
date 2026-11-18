@@ -258,8 +258,11 @@ function ResultsForm({ order, onDone }: { order: LabOrder; onDone: (order: LabOr
   const [file, setFile] = useState<File | null>(null)
   const [missing, setMissing] = useState<string[]>([])
   const [problem, setProblem] = useState<string | null>(null)
-  const set = (id: string, change: Partial<Entry>) =>
+  const set = (id: string, change: Partial<Entry>) => {
     setEntries((current) => ({ ...current, [id]: { ...current[id], ...change } }))
+    // Clear "Required" as soon as the row is filled in.
+    if (change.value?.trim()) setMissing((current) => current.filter((rowId) => rowId !== id))
+  }
   const complete = useMutation({
     mutationFn: (results: ResultInput[]) => labOrdersApi.complete(order.id, results, file),
     onSuccess: (done) => {
