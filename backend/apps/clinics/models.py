@@ -7,8 +7,8 @@ from django.db import models
 
 from apps.common.models import BaseModel, TenantModel
 
-# Changed only by the invoice service, under a row lock (see billing/services.py).
-INVOICE_COUNTER_FIELDS = {"last_invoice_number", "last_lab_invoice_number"}
+# Changed only by the numbering services, under a row lock (billing and lab services).
+COUNTER_FIELDS = {"last_invoice_number", "last_lab_invoice_number", "last_lab_order_number"}
 
 
 class Clinic(BaseModel):
@@ -42,6 +42,8 @@ class Clinic(BaseModel):
     lab_name = models.CharField(max_length=200, blank=True)
     lab_pan_number = models.CharField(max_length=20, blank=True)
     last_lab_invoice_number = models.PositiveIntegerField(default=0)
+    # Counter for the "Lab No." printed on lab reports.
+    last_lab_order_number = models.PositiveIntegerField(default=0)
     # VAT is optional: one rate, switched on or off per kind of invoice.
     vat_rate = models.DecimalField(
         max_digits=5,
@@ -61,18 +63,19 @@ class Clinic(BaseModel):
         return self.name
 
     def save(self, *args, **kwargs) -> None:
-        """Save every field except the invoice counters, unless they are named explicitly.
+        """Save every field except the number counters, unless they are named explicitly.
 
         Settings screens work on a copy of the clinic read a moment earlier. If an
         invoice was created in between, saving that copy would write the old counter
         back and the next invoice number would repeat. The invoice service always
-        names the counter in update_fields, so only it can change the counters.
+        names the counter in update_fields, so only it can change the counters (the
+        same goes for the Lab No. counter and the lab service).
         """
         if not self._state.adding and kwargs.get("update_fields") is None:
             kwargs["update_fields"] = [
                 field.name
                 for field in self._meta.concrete_fields
-                if not field.primary_key and field.name not in INVOICE_COUNTER_FIELDS
+                if not field.primary_key and field.name not in COUNTER_FIELDS
             ]
         super().save(*args, **kwargs)
 

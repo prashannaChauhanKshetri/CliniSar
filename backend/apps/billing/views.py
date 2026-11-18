@@ -5,6 +5,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from apps.accounts.models import User
+from apps.common.audit import Action, AuditLogMixin
 from apps.common.permissions import IsAdminOrStaff, IsLabTechnician, IsPharmacist
 from apps.common.views import TenantViewSet
 
@@ -22,7 +23,7 @@ SOURCE_FOR_ROLE = {
 }
 
 
-class InvoiceViewSet(TenantViewSet):
+class InvoiceViewSet(AuditLogMixin, TenantViewSet):
     """invoices/: list, retrieve with lines, plus pay/ and cancel/."""
 
     queryset = Invoice.objects.select_related("patient", "received_by").prefetch_related("items")
@@ -57,6 +58,7 @@ class InvoiceViewSet(TenantViewSet):
         invoice = services.pay_invoice(
             invoice, received_by=request.user, **serializer.validated_data
         )
+        self.audit(Action.UPDATE, invoice)
         return Response(InvoiceSerializer(invoice).data)
 
     @extend_schema(request=CancelInvoiceSerializer, responses=InvoiceSerializer)
@@ -66,4 +68,5 @@ class InvoiceViewSet(TenantViewSet):
         serializer = CancelInvoiceSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         invoice = services.cancel_invoice(invoice, reason=serializer.validated_data["reason"])
+        self.audit(Action.UPDATE, invoice)
         return Response(InvoiceSerializer(invoice).data)

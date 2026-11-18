@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import DoctorProfile, User
+from apps.common.audit import Action, AuditLogMixin
 from apps.common.permissions import IsAdminOrStaff, IsDoctor
 from apps.common.views import TenantViewSet
 
@@ -74,7 +75,7 @@ class SlotsView(APIView):
         return Response(SlotSerializer(slots, many=True).data)
 
 
-class AppointmentViewSet(TenantViewSet):
+class AppointmentViewSet(AuditLogMixin, TenantViewSet):
     """appointments/: list, create, retrieve, plus the cancel/ and complete/ actions.
 
     There is no PATCH or DELETE: a visit only changes through its actions.
@@ -119,6 +120,7 @@ class AppointmentViewSet(TenantViewSet):
             appointment = services.book_appointment(
                 **common, day=data["date"], start_time=data["start_time"]
             )
+        self.audit(Action.CREATE, appointment)
         return Response(AppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
 
     @extend_schema(request=CancelAppointmentSerializer, responses=AppointmentSerializer)
@@ -131,10 +133,12 @@ class AppointmentViewSet(TenantViewSet):
         appointment = services.cancel_appointment(
             appointment, user=request.user, reason=serializer.validated_data["reason"]
         )
+        self.audit(Action.UPDATE, appointment)
         return Response(AppointmentSerializer(appointment).data)
 
     @extend_schema(request=None, responses=AppointmentSerializer)
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None) -> Response:
         appointment = services.complete_appointment(self.get_object())
+        self.audit(Action.UPDATE, appointment)
         return Response(AppointmentSerializer(appointment).data)

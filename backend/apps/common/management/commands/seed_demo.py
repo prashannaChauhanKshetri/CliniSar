@@ -18,6 +18,8 @@ from apps.accounts.models import DoctorProfile, PatientProfile, User
 from apps.accounts.services import estimate_date_of_birth
 from apps.billing import services as billing
 from apps.clinics.models import Clinic, Department
+from apps.lab import services as lab
+from apps.lab.models import LabTest
 from apps.pharmacy import services as pharmacy
 from apps.pharmacy.models import Medicine, MedicineBatch
 from apps.records import services as records
@@ -131,6 +133,127 @@ PRESCRIPTIONS = [
     ("Gastritis", [("Omeprazole", "20mg", "1-0-0 before breakfast", 14, 14)], False),
 ]
 
+# Lab tests as on real report templates. Rows: (name, unit, reference range, section).
+LAB_TESTS = [
+    {
+        "name": "CBC",
+        "price": "500.00",
+        "category": "HEMATOLOGY REPORT",
+        "specimen": "Whole Blood",
+        "rows": [
+            ("Hemoglobin (Hb)", "gm%", "11-16", ""),
+            ("Total Leucocyte Count (WBC)", "Cells/cumm", "4000-11000", ""),
+            ("RBC Count", "Million cells/cumm", "4.5-5.5", ""),
+            ("Platelets Count", "Lakh cells/cumm", "1.5-4.5", ""),
+            ("Neutrophils", "%", "45-75", "Differential Leucocyte Count"),
+            ("Lymphocytes", "%", "20-40", "Differential Leucocyte Count"),
+            ("Monocytes", "%", "1-6", "Differential Leucocyte Count"),
+            ("Eosinophils", "%", "2-8", "Differential Leucocyte Count"),
+            ("Basophils", "%", "0-1", "Differential Leucocyte Count"),
+            ("PCV", "%", "36-45", ""),
+            ("MCV", "fl", "72-95", ""),
+            ("MCH", "pg", "25-29", ""),
+            ("MCHC", "%", "31-36", ""),
+            ("ESR", "mm/hr", "0-20", ""),
+        ],
+    },
+    {
+        "name": "RBS",
+        "price": "150.00",
+        "category": "BIOCHEMICAL REPORT",
+        "specimen": "Serum",
+        "rows": [("Random Blood Sugar", "mg/dl", "70-140", "")],
+    },
+    {
+        "name": "LFT",
+        "price": "1200.00",
+        "category": "BIOCHEMICAL REPORT",
+        "specimen": "Serum",
+        "rows": [
+            ("S. Bilirubin (Total)", "mg/dl", "0.2-1.2", ""),
+            ("S. Bilirubin (Direct)", "mg/dl", "0.0-0.4", ""),
+            ("SGPT", "U/L", "10-49", ""),
+            ("SGOT", "U/L", "10-46", ""),
+            ("Serum Alkaline Phosphatase", "U/L", "64-290", ""),
+            ("Albumin", "g/dl", "3.5-5.2", ""),
+            ("Total Protein", "g/dl", "6-8", ""),
+        ],
+    },
+    {
+        "name": "Lipid Profile",
+        "price": "1000.00",
+        "category": "BIOCHEMICAL REPORT",
+        "specimen": "Serum",
+        "rows": [
+            ("Triglycerides", "mg/dl", "40-165", ""),
+            ("Total Cholesterol", "mg/dl", "150-220", ""),
+            ("HDL Cholesterol", "mg/dl", "35-65", ""),
+            ("LDL Cholesterol", "mg/dl", "Up to 150", ""),
+            ("VLDL Cholesterol", "mg/dl", "3-32", ""),
+        ],
+    },
+    {
+        "name": "Serology",
+        "price": "800.00",
+        "category": "SEROLOGY REPORT",
+        "specimen": "Serum",
+        "rows": [(name, "", "Non-Reactive", "") for name in ("HIV", "HBsAg", "HCV", "VDRL")],
+    },
+    {
+        "name": "Urine RE",
+        "price": "200.00",
+        "category": "URINE ANALYSIS",
+        "specimen": "Urine",
+        "rows": [
+            ("Color", "", "", "Physical Examination"),
+            ("Appearance", "", "", "Physical Examination"),
+            ("Reaction (pH)", "", "", "Physical Examination"),
+            ("Protein", "", "Nil", "Chemical Examination"),
+            ("Sugar", "", "Nil", "Chemical Examination"),
+            ("Pus Cells", "/HPF", "0-5", "Microscopic Examination"),
+            ("Red Blood Cells", "/HPF", "Nil", "Microscopic Examination"),
+            ("Epithelial Cells", "/HPF", "0-5", "Microscopic Examination"),
+        ],
+    },
+    {
+        "name": "CRP Quantitative",
+        "price": "900.00",
+        "category": "IMMUNOLOGY REPORT",
+        "method": "Fluorescence Immunoassay (FIA)",
+        "specimen": "Serum",
+        "interpretation": "C-Reactive Protein rises within 4-6 hours of infection, "
+        "inflammation or tissue injury and falls as the inflammation subsides.",
+        "rows": [("CRP Quantitative", "mg/L", "0.0-5.0", "")],
+    },
+    {
+        "name": "HbA1c",
+        "price": "1200.00",
+        "category": "BIOCHEMISTRY REPORT",
+        "method": "Fluorescence Immunoassay (FIA)",
+        "specimen": "Whole Blood",
+        "rows": [("HbA1c", "%", "4.0-6.5", "")],
+    },
+]
+
+# Results for the demo's completed order (CBC + RBS); ABNORMAL where outside the range.
+DEMO_RESULTS = {
+    "Hemoglobin (Hb)": ("10.2", "ABNORMAL"),
+    "Total Leucocyte Count (WBC)": ("9,900", "NORMAL"),
+    "RBC Count": ("4.6", "NORMAL"),
+    "Platelets Count": ("1.90", "NORMAL"),
+    "Neutrophils": ("65", "NORMAL"),
+    "Lymphocytes": ("30", "NORMAL"),
+    "Monocytes": ("05", "NORMAL"),
+    "Eosinophils": ("00", "ABNORMAL"),
+    "Basophils": ("00", "NORMAL"),
+    "PCV": ("38.3", "NORMAL"),
+    "MCV": ("90.9", "NORMAL"),
+    "MCH": ("29.0", "NORMAL"),
+    "MCHC": ("31.9", "NORMAL"),
+    "ESR": ("10", "NORMAL"),
+    "Random Blood Sugar": ("162", "ABNORMAL"),
+}
+
 # Saturday is the weekly holiday in Nepal; doctors work Sunday to Friday mornings.
 WORKING_DAYS = [
     DoctorSchedule.Weekday.SUNDAY,
@@ -157,6 +280,9 @@ class Command(BaseCommand):
                 if not Medicine.objects.filter(clinic=clinic).exists():
                     seed_pharmacy(clinic)
                     added.append(f"{clinic.name}: medicines and prescriptions")
+                if not LabTest.objects.filter(clinic=clinic).exists():
+                    seed_lab(clinic)
+                    added.append(f"{clinic.name}: lab tests and lab orders")
 
         if added:
             self.stdout.write(self.style.SUCCESS("Added:\n  " + "\n  ".join(added) + "\n"))
@@ -299,6 +425,65 @@ def prescription_line(clinic, name, dosage, frequency, days, quantity) -> dict:
         "quantity": quantity,
         "instructions": "",
     }
+
+
+# ---------- lab ----------
+
+
+def seed_lab(clinic: Clinic) -> None:
+    """The lab's tests, then one order in each state: completed, sample taken, just ordered."""
+    for details in LAB_TESTS:
+        details = dict(details)
+        rows = details.pop("rows")
+        lab_test = LabTest.objects.create(
+            clinic=clinic, **{**details, "price": Decimal(details["price"])}
+        )
+        lab.save_parameters(
+            lab_test,
+            [{"name": n, "unit": u, "reference_range": r, "section": s} for n, u, r, s in rows],
+        )
+
+    lab_tech = clinic.users.get(role=User.Role.LAB_TECHNICIAN)
+    staff = clinic.users.get(role=User.Role.STAFF)
+    tests = {test.name: test for test in LabTest.objects.filter(clinic=clinic)}
+    visits = Appointment.objects.filter(clinic=clinic, status=Appointment.Status.COMPLETED)
+
+    # 1. A doctor's order from a past visit, finished, bill paid.
+    visit = visits.order_by("-date").first()
+    done = lab.create_lab_order(
+        clinic=clinic,
+        tests=[tests["CBC"], tests["RBS"]],
+        ordered_by=visit.doctor.user,
+        appointment=visit,
+    )
+    lab.collect_sample(done, user=lab_tech)
+    lab.complete_lab_order(done, user=lab_tech, results=demo_results(done))
+    billing.pay_invoice(done.invoice, payment_method="CASH", received_by=staff)
+
+    # 2. A patient who came to the lab on their own ("Consultant: Self"), sample taken.
+    walk_in_patient = PatientProfile.objects.filter(clinic=clinic).order_by("first_name").last()
+    self_referred = lab.create_lab_order(
+        clinic=clinic,
+        tests=[tests["Serology"], tests["Urine RE"]],
+        ordered_by=lab_tech,
+        patient=walk_in_patient,
+    )
+    lab.collect_sample(self_referred, user=lab_tech)
+
+    # 3. Ordered by a doctor from another past visit, waiting for the sample.
+    visit = visits.order_by("-date")[1]
+    lab.create_lab_order(
+        clinic=clinic, tests=[tests["LFT"]], ordered_by=visit.doctor.user, appointment=visit
+    )
+
+
+def demo_results(order) -> list[dict]:
+    rows = []
+    for item in order.items.all():
+        for parameter in item.lab_test.parameters.all():
+            value, flag = DEMO_RESULTS[parameter.name]
+            rows.append({"parameter": parameter.pk, "value": value, "flag": flag})
+    return rows
 
 
 # ---------- visits and bills ----------

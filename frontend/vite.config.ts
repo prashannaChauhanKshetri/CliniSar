@@ -14,6 +14,8 @@ export default defineConfig({
     // This is what lets the SameSite=Strict refresh cookie work locally.
     proxy: {
       '/api': apiTarget,
+      // Uploaded files in development (production serves them from S3).
+      '/media': apiTarget,
     },
   },
   test: {

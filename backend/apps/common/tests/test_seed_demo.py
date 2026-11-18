@@ -9,6 +9,7 @@ from apps.accounts.models import User
 from apps.billing.models import Invoice
 from apps.clinics.models import Clinic
 from apps.common.management.commands import seed_demo
+from apps.lab.models import LabOrder, LabTest
 from apps.pharmacy.models import Medicine, MedicineBatch
 from apps.records.models import Prescription
 from apps.scheduling.models import Appointment
@@ -102,3 +103,19 @@ def test_seed_adds_the_pharmacy_to_clinics_seeded_before_it_existed() -> None:
     assert "medicines and prescriptions" in output
     assert Medicine.objects.count() == 2 * len(seed_demo.MEDICINES)
     assert Clinic.objects.count() == 2
+
+
+def test_seed_lab_has_tests_and_an_order_in_each_state() -> None:
+    run_seed()
+    for clinic in Clinic.objects.all():
+        assert LabTest.objects.filter(clinic=clinic).count() == len(seed_demo.LAB_TESTS)
+        orders = LabOrder.objects.filter(clinic=clinic)
+        assert sorted(orders.values_list("status", flat=True)) == [
+            "COMPLETED",
+            "ORDERED",
+            "SAMPLE_COLLECTED",
+        ]
+        assert orders.filter(appointment__isnull=True).count() == 1  # the self-referred one
+        completed = orders.get(status="COMPLETED")
+        assert completed.invoice.status == "PAID"
+        assert completed.items.count() == 2

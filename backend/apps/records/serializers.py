@@ -3,11 +3,13 @@
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.accounts.models import PatientProfile
 from apps.common.serializers import TenantPrimaryKeyRelatedField
+from apps.common.validators import validate_upload
 from apps.pharmacy.models import Medicine
 from apps.scheduling.models import Appointment
 
-from .models import Prescription, PrescriptionItem
+from .models import Document, Prescription, PrescriptionItem
 
 
 class PrescriptionItemSerializer(serializers.ModelSerializer):
@@ -96,3 +98,31 @@ class PrescriptionCreateSerializer(serializers.Serializer):
         if len(medicines) != len(set(medicines)):
             raise serializers.ValidationError("Each medicine may appear only once.")
         return items
+
+
+class DocumentSerializer(serializers.ModelSerializer):
+    """A file kept for a patient (old report, scan, ...): PDF, JPG or PNG up to 10 MB."""
+
+    patient = TenantPrimaryKeyRelatedField(queryset=PatientProfile.objects.all())
+    patient_name = serializers.CharField(source="patient.full_name", read_only=True)
+    file = serializers.FileField(validators=[validate_upload])
+    uploaded_by_name = serializers.CharField(source="uploaded_by.get_full_name", read_only=True)
+
+    class Meta:
+        model = Document
+        fields = [
+            "id",
+            "patient",
+            "patient_name",
+            "title",
+            "file",
+            "uploaded_by",
+            "uploaded_by_name",
+            "created_at",
+        ]
+        read_only_fields = ["uploaded_by"]
+
+    def create(self, validated_data: dict) -> Document:
+        """The uploader is always the logged-in user."""
+        validated_data["uploaded_by"] = self.context["request"].user
+        return super().create(validated_data)

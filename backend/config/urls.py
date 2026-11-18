@@ -1,5 +1,7 @@
 """Top-level URL table. Each app's urls.py is mounted under /api/v1/."""
 
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
@@ -12,6 +14,12 @@ urlpatterns = [
     path("api/v1/", include("apps.billing.urls")),
     path("api/v1/", include("apps.records.urls")),
     path("api/v1/", include("apps.pharmacy.urls")),
+    path("api/v1/", include("apps.lab.urls")),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="docs"),
 ]
+
+# Development only: let Django serve uploaded files. In production they live in a
+# private S3 bucket and are reached through short-lived pre-signed links.
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

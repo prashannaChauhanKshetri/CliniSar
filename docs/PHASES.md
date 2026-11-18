@@ -674,3 +674,109 @@ database seeded earlier adds only this missing pharmacy part.
 4. `backend/apps/pharmacy/views.py` and `backend/apps/records/views.py` - thin views.
 5. `backend/apps/pharmacy/tests/test_stock_services.py` - earliest-first, spill-over,
    expired batches and the "nothing changes" 409.
+
+## Phase 7 - Lab, documents and the audit log
+
+### What was built
+
+| Endpoint | Who | What |
+| -------- | --- | ---- |
+| `lab-tests/` CRUD | admin, lab technician (staff, doctor: read) | a test with its report rows (`parameters`) |
+| `lab-orders/` GET | admin, staff, lab technician: all; doctor: own patients | orders with tests, rows and results |
+| `lab-orders/` POST | doctor (from own visit), lab technician (visit optional) | `tests`, plus `appointment` or `patient` |
+| `POST lab-orders/<id>/collect/` | lab technician | ORDERED -> SAMPLE_COLLECTED |
+| `POST lab-orders/<id>/complete/` | lab technician | results for every row, optional file |
+| `POST lab-orders/<id>/cancel/` | lab technician | only from ORDERED; cancels the bill if unpaid |
+| `documents/` GET, POST, DELETE | admin, staff (doctor: read own patients) | patient files: PDF, JPG, PNG, max 10 MB |
+
+### The lab model (shaped by the real report templates)
+
+- **`LabTest`** is what is billed: "CBC", "LFT", "Lipid Profile", "RBS". It has a
+  `category` (the heading it is printed under, e.g. "HEMATOLOGY REPORT"), optional
+  `method`, `specimen` and `interpretation` text, and `is_active`.
+- **`LabTestParameter`** is one row of the report: name, unit, reference range,
+  optional section (e.g. "Differential Leucocyte Count") and position.
+- **`LabOrder`** has one **Lab No.** (sequential per clinic, under a row lock like
+  invoice numbers), the patient, an optional visit, who ordered, who collected and
+  completed, an optional file, and a cancel reason.
+- **`LabOrderItem`** is one test in the order (the many-to-many join).
+- **`LabResult`** is one entered row: value (text, so "Non-Reactive" works), flag
+  NORMAL or ABNORMAL, and a **copy** of name, unit, range and section. Editing a test
+  later never changes a finished report.
+- The report's "Consultant" is the visit's doctor, or **"Self"** without a visit.
+
+### Rules (`apps/lab/services.py`)
+
+- A doctor orders from their own visit (not cancelled or no-show). A lab technician
+  may also order for a patient without a visit. Tests: at least one, each once, all
+  still offered, all from the same clinic.
+- Ordering creates the order, its Lab No. and **one LAB bill with a line per test**,
+  all in one transaction. With a separate lab bill book, the bill is in the LAB series
+  with the lab's name and PAN.
+- Status only moves ORDERED -> SAMPLE_COLLECTED -> COMPLETED; CANCELLED only from
+  ORDERED. Anything else is a 400 that says what the status must be.
+- Completing needs a value and a flag for **every** row of every test; a missing row
+  is named in the 400. `complete/` accepts JSON, or multipart form data when a file
+  is attached (then `results` is sent as JSON text).
+
+### Files
+
+- `apps/common/validators.py` checks every upload: at most 10 MB, extension PDF, JPG,
+  JPEG or PNG, **and** the first bytes must match that type. A program renamed to
+  `report.pdf` is refused.
+- Development: files are saved in `backend/media/` and Django serves them (DEBUG only).
+- Production (`prod.py`): files go to a **private S3 bucket** through django-storages;
+  the API returns **pre-signed links that expire after 5 minutes**. The bucket name
+  comes from `AWS_STORAGE_BUCKET_NAME`; the credentials come from the server's IAM
+  role, never from code. The bucket itself is created in phase 11.
+
+### Audit log
+
+`AuditLogMixin` (`apps/common/audit.py`) is on the viewsets for appointments,
+prescriptions, lab orders, invoices and documents. It writes an `AuditLog` row (user,
+clinic, CREATE/UPDATE/DELETE, model name, object id) for every create, update and
+delete, and for every custom action (cancel, complete, pay, dispense, collect). A
+refused request writes nothing. The log is read in the Django admin site.
+
+### Decisions to know about
+
+- **`LabTest.unit` and `normal_range` from the brief moved to the parameters**, because
+  a real test has many rows, each with its own unit and range.
+- **Only lab technicians move orders forward** (collect, complete, cancel), as in the
+  role matrix. Admin and staff can view.
+- **Doctors see lab orders and documents of their own patients**, like prescriptions.
+- **Pharmacists cannot see lab tests, lab orders or documents.**
+- **A test that has been ordered cannot be deleted** (409); switch `is_active` off
+  instead, which hides it from new orders.
+
+### Demo data
+
+`seed_demo` now adds eight lab tests per clinic (CBC with 14 rows, RBS, LFT, Lipid
+Profile, Serology, Urine RE, CRP, HbA1c) and three orders: Lab No. 1 completed with
+results and a paid bill, Lab No. 2 self-referred with the sample taken, Lab No. 3
+ordered by a doctor and waiting.
+
+### Manual check through the front-end dev server (Sunrise)
+
+| Step | Result |
+| ---- | ------ |
+| Lab order list | Lab No. 1 COMPLETED (Dr. Sunita), 2 SAMPLE_COLLECTED (consultant Self), 3 ORDERED |
+| Completed report | rows with value, unit, range; Hb 10.2 and RBS 162 flagged abnormal |
+| Complete before collect | 400 "must be SAMPLE_COLLECTED" |
+| Complete with one row missing | 400 "Results are missing for LFT: Total Protein." |
+| Complete all 7 rows + a PDF as multipart | 200 COMPLETED; the PDF opens (200, application/pdf) |
+| Cancel a completed order | 400 |
+| Lab bills | series LAB, "Sunrise Path Lab", PAN 100000002, own numbers 1-3 |
+| Upload PNG / program renamed to .pdf / .exe | 201 / 400 "not a real PDF file" / 400 |
+| Doctor collects / staff orders a test | 403 / 403 |
+| Himal lab technician opens a Sunrise order | 404 |
+
+### Files to read first
+
+1. `backend/apps/lab/models.py` - the five lab tables and why results are copies.
+2. `backend/apps/lab/services.py` - ordering, Lab No., status steps, results.
+3. `backend/apps/lab/serializers.py` - nested parameters; `complete/` input.
+4. `backend/apps/common/validators.py` - the upload check.
+5. `backend/apps/common/audit.py` - the audit mixin.
+6. `backend/config/settings/prod.py` - private S3 with 5-minute links.
+7. `backend/apps/lab/tests/test_services.py` - every status-change rule.

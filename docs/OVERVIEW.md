@@ -127,7 +127,7 @@ locked. There are no refunds.
 | 4   | Schedules, slots, appointments, walk-ins             | Done   |
 | 5   | Billing: invoices, numbering, VAT, pay, cancel       | Done   |
 | 6   | Prescriptions and pharmacy                           | Done   |
-| 7   | Lab, documents, audit log                            |        |
+| 7   | Lab, documents, audit log                            | Done   |
 | 8   | Dashboard summary, demo data command                 |        |
 | 9   | Front-end foundation                                 |        |
 | 10  | Front-end pages, print pages, dashboard              |        |

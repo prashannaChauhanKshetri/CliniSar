@@ -64,7 +64,7 @@ def test_factories_keep_related_objects_in_one_clinic() -> None:
 
     order = LabOrderFactory()
     assert order.patient == order.appointment.patient
-    assert order.lab_test.clinic == order.clinic
+    assert order.items.get().lab_test.clinic == order.clinic
 
     invoice = InvoiceItemFactory().invoice
     assert invoice.patient.clinic == invoice.clinic

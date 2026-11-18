@@ -17,8 +17,9 @@ from apps.accounts.tests.factories import DoctorProfileFactory, PatientProfileFa
 from apps.billing.tests.factories import InvoiceFactory
 from apps.clinics.models import Clinic
 from apps.clinics.tests.factories import ClinicFactory, DepartmentFactory
+from apps.lab.tests.factories import LabOrderFactory, LabTestFactory
 from apps.pharmacy.tests.factories import MedicineBatchFactory, MedicineFactory
-from apps.records.tests.factories import PrescriptionFactory
+from apps.records.tests.factories import DocumentFactory, PrescriptionFactory
 from apps.scheduling.tests.factories import AppointmentFactory, DoctorScheduleFactory
 
 # What we try on another clinic's object: (HTTP method, path after "<id>/").
@@ -75,6 +76,24 @@ ENDPOINTS = [
         "/api/v1/batches/",
         lambda clinic: MedicineBatchFactory(clinic=clinic),
         detail_requests=[("get", ""), ("post", "adjust/")],
+    ),
+    Endpoint("/api/v1/lab-tests/", lambda clinic: LabTestFactory(clinic=clinic)),
+    Endpoint(
+        "/api/v1/lab-orders/",
+        lambda clinic: LabOrderFactory(clinic=clinic),
+        detail_requests=[
+            ("get", ""),
+            ("post", "collect/"),
+            ("post", "complete/"),
+            ("post", "cancel/"),
+        ],
+        role=User.Role.LAB_TECHNICIAN,
+    ),
+    Endpoint(
+        "/api/v1/documents/",
+        lambda clinic: DocumentFactory(clinic=clinic),
+        detail_requests=[("get", ""), ("delete", "")],
+        role=User.Role.STAFF,
     ),
 ]
 

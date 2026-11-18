@@ -6,5 +6,6 @@ from . import views
 
 router = SimpleRouter()
 router.register("prescriptions", views.PrescriptionViewSet, basename="prescription")
+router.register("documents", views.DocumentViewSet, basename="document")
 
 urlpatterns = router.urls

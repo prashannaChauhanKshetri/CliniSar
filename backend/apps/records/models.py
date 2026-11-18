@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db import models
 
 from apps.common.models import BaseModel, TenantModel
+from apps.common.validators import validate_upload
 
 
 class Prescription(TenantModel):
@@ -71,7 +72,7 @@ class Document(TenantModel):
         "accounts.PatientProfile", on_delete=models.PROTECT, related_name="documents"
     )
     title = models.CharField(max_length=200)
-    file = models.FileField(upload_to="documents/")
+    file = models.FileField(upload_to="documents/", validators=[validate_upload])
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="documents_uploaded"
     )
