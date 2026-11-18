@@ -4,7 +4,8 @@ A multi-tenant clinic management system for clinics in Nepal. Many independent c
 share one deployment, and each clinic only ever sees its own data.
 
 This README is filled in fully in phase 11. Progress so far is described in
-[docs/PHASES.md](docs/PHASES.md).
+[docs/PHASES.md](docs/PHASES.md). How the system works: [docs/OVERVIEW.md](docs/OVERVIEW.md)
+(one page), [docs/BACKEND.md](docs/BACKEND.md) and [docs/FRONTEND.md](docs/FRONTEND.md).
 
 ## Run with Docker Compose
 

@@ -21,4 +21,9 @@ export default tseslint.config(
       globals: globals.browser,
     },
   },
+  {
+    // Route tables and test helpers are not components; fast refresh does not apply.
+    files: ['src/routes/router.tsx', 'src/test/**'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 )

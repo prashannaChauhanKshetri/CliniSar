@@ -1,0 +1,21 @@
+/* Page-wide basics. Everything else is styled through the Mantine theme (src/theme.ts). */
+html,
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Numbers in tables line up when every digit has the same width. */
+.tabular-numbers {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hidden on screen but read by screen readers (e.g. table captions). */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

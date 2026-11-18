@@ -1,6 +1,7 @@
 # CliniSar in one page
 
 A compact guide to the whole project. For the build history, see [PHASES.md](PHASES.md).
+For how each half works in depth: [BACKEND.md](BACKEND.md) and [FRONTEND.md](FRONTEND.md).
 
 ## What it is
 
@@ -14,7 +15,7 @@ patients are records that staff manage.
 | ---------- | ---------------------------------------------------------------------- |
 | Back end   | Python 3.14, Django 5.2 LTS, Django REST Framework, simplejwt (JWT)    |
 | Database   | PostgreSQL                                                             |
-| Front end  | React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Hook Form |
+| Front end  | React, TypeScript, Vite, Mantine (components), TanStack Query, React Hook Form + Zod |
 | Tests      | pytest + factory_boy (back end), Vitest (front end)                    |
 | Lint       | Ruff (Python), ESLint + Prettier (TypeScript)                          |
 | Deployment | Docker, Nginx, GitHub Actions, AWS (EC2, RDS, S3, CloudFront)          |
@@ -129,7 +130,7 @@ locked. There are no refunds.
 | 6   | Prescriptions and pharmacy                           | Done   |
 | 7   | Lab, documents, audit log                            | Done   |
 | 8   | Dashboard summary, demo data command                 | Done   |
-| 9   | Front-end foundation                                 |        |
+| 9   | Front-end foundation                                 | Done   |
 | 10  | Front-end pages, print pages, dashboard              |        |
 | 11  | Production Docker, CI/CD, deployment guide, README   |        |
 

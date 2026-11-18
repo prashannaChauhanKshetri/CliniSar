@@ -854,3 +854,80 @@ appointments, prescriptions, lab orders and invoices, with the logins printed.
 2. `backend/apps/dashboard/views.py` - one small view.
 3. `backend/apps/dashboard/tests/test_summary.py` - ranges, money, charts, roles.
 4. `backend/apps/common/management/commands/seed_demo.py` - the whole demo.
+
+## Phase 9 - Front-end foundation
+
+### Decision: Mantine instead of Tailwind (your choice)
+
+The brief said "no UI component library" and Tailwind. You chose **Mantine 9 without
+Tailwind**: an industry-standard, documented component library (14.7 million downloads
+a month, MIT, released days before this phase, built for React 19) instead of
+hand-written components. Tailwind was removed so there is one styling system. The 13
+brand colours, the font, spacing and radius are defined once in `src/theme.ts`.
+Charts will use Mantine Charts, which is built on Recharts (still the brief's library).
+
+### Decision: the Bikram Sambat library (researched as the brief asked)
+
+Four maintained libraries were tested on every month of BS 2000-2099 in four time
+zones. The two most popular ones stop at **BS 2090** and fail the requirement.
+**@remotemerge/nepali-date-converter 1.2.7** covers BS 2000-2099, converted all 36,525
+days to AD and back without a gap, gives the same answer in every time zone, has no
+dependencies and was released in October 2026. All libraries agree up to BS 2084;
+after that the official calendar is not published yet and every library projects, but
+since the database stores AD dates, a future correction can only change the display.
+The **BS date picker is our own** (built on `lib/date.ts`), because the npm BS pickers
+support only React 18 or bundle a different calendar table. Full table in
+`docs/FRONTEND.md`, section 6.
+
+### What was built
+
+- **App shell**: fixed 260px blue sidebar (menu by role, outline icons), white 64px
+  top bar (patient search with the `/` shortcut, alerts bell, account menu), light grey
+  page, white bordered cards. Below 1024px the sidebar is a drawer with a close button
+  and Esc.
+- **Sign-in**: login page with validation and clear errors; access token in memory
+  only; refresh through the httpOnly cookie; one shared refresh on 401; session restored
+  on reload; clean sign-out that clears all cached data.
+- **Routing by role**: every address from the brief (except the patient sign-up, which
+  was dropped earlier); `navigation.ts` is the single list of screens and roles used by
+  both the sidebar and the route guard; forbidden and not-found pages. Screens show a
+  placeholder until phase 10.
+- **Shared components**: `DataTable` (loading, empty, error, pagination), `StatCard`,
+  `StatusBadge`, `PageHeader`, `ConfirmDialog`, `ErrorState`, `DateText`,
+  `BsDatePicker`, `Logo`, `FullPageLoader`. Buttons, inputs, selects, cards, badges,
+  modals and empty states come from Mantine, styled by the theme.
+- **`lib/date.ts`** (BS conversion and formatting, Nepal time) and **`lib/money.ts`**
+  (`Rs. 1,25,000.00`, amounts in words for bills), with unit tests.
+- **Docs**: `docs/BACKEND.md` and `docs/FRONTEND.md` explain how each half works, how
+  data flows, which code does what and why; `FRONTEND.md` maps Shneiderman's eight
+  golden rules and the 8-point spacing grid to the code.
+
+### Tests and checks
+
+- 89 front-end tests (Vitest): date pairs and range, money, the refresh rules (including
+  one shared refresh for parallel 401s), error messages, menus and access for every
+  role, route guards, the login page, the table states, the date picker, the stat card,
+  the layout and the alerts.
+- A real-browser check in headless Chrome against the running back end: wrong password
+  message, sign-in, menu for the role, nothing in `localStorage` and the refresh cookie
+  not readable by scripts, alerts menu, reload keeps the session, forbidden page,
+  not-found page, mobile drawer (opens, closes with X and Esc), sign-out and redirect.
+  The screenshots were compared with the reference dashboard.
+- Production build: our code ~21 KB, libraries split into separately cached files.
+
+### Things the browser check found and fixed
+
+- On a phone the open drawer covered the menu button, so it could not be closed except
+  by picking a page: a close button and Esc were added.
+- "1 lab orders are waiting" / "1 alerts": singular and plural are now correct.
+- The phone view had no way to search: a search icon now opens the patient list.
+
+### Files to read first
+
+1. `frontend/src/api/client.ts` - token in memory, one shared refresh.
+2. `frontend/src/features/auth/AuthProvider.tsx` - restoring and ending a session.
+3. `frontend/src/routes/navigation.ts` - every screen and who may open it.
+4. `frontend/src/theme.ts` - the whole design system.
+5. `frontend/src/lib/date.ts` and `frontend/src/lib/money.ts`.
+6. `frontend/src/components/DataTable.tsx` and `BsDatePicker.tsx`.
+7. `docs/FRONTEND.md` and `docs/BACKEND.md`.
