@@ -17,6 +17,7 @@ from django.utils import timezone
 from apps.accounts.models import DoctorProfile, PatientProfile, User
 from apps.accounts.services import estimate_date_of_birth
 from apps.billing import services as billing
+from apps.billing.models import Invoice
 from apps.clinics.models import Clinic, Department
 from apps.lab import services as lab
 from apps.lab.models import LabTest
@@ -283,6 +284,9 @@ class Command(BaseCommand):
                 if not LabTest.objects.filter(clinic=clinic).exists():
                     seed_lab(clinic)
                     added.append(f"{clinic.name}: lab tests and lab orders")
+                if not has_history(clinic):
+                    seed_history(clinic)
+                    added.append(f"{clinic.name}: two months of visit history")
 
         if added:
             self.stdout.write(self.style.SUCCESS("Added:\n  " + "\n  ".join(added) + "\n"))
@@ -486,6 +490,49 @@ def demo_results(order) -> list[dict]:
     return rows
 
 
+# ---------- history for the dashboard ----------
+
+
+def has_history(clinic: Clinic) -> bool:
+    """True when the clinic already has visits older than three weeks."""
+    three_weeks_ago = timezone.localdate() - datetime.timedelta(days=21)
+    return Appointment.objects.filter(clinic=clinic, date__lt=three_weeks_ago).exists()
+
+
+def seed_history(clinic: Clinic) -> None:
+    """Two months of past visits, so the week and month comparisons have data.
+
+    Demo only: payments are dated on the day of their visit, and patients' sign-up
+    dates are spread over the two months. In real use these timestamps are set by
+    the moment things happen.
+    """
+    staff = clinic.users.get(role=User.Role.STAFF)
+    doctors = list(DoctorProfile.objects.filter(user__clinic=clinic))
+    patients = list(PatientProfile.objects.filter(clinic=clinic).order_by("first_name"))
+    for days_ago in range(15, 60):
+        busy_day = days_ago % 7 in (1, 2)  # some days are busier, so the charts vary
+        for _ in range(2 if busy_day else 1):
+            add_past_visit(clinic, random.choice(doctors), random.choice(patients), staff, days_ago)
+
+    date_payments_on_visit_day(clinic)
+    for index, patient in enumerate(patients):
+        signed_up = timezone.now() - datetime.timedelta(days=index * 6)
+        PatientProfile.objects.filter(pk=patient.pk).update(created_at=signed_up)
+
+
+def date_payments_on_visit_day(clinic: Clinic) -> None:
+    """Move each paid consultation bill's payment time to noon on its visit's date."""
+    paid = Invoice.objects.filter(
+        clinic=clinic, status=Invoice.Status.PAID, appointment__isnull=False
+    ).select_related("appointment")
+    for invoice in paid:
+        visit_day = invoice.appointment.date
+        if visit_day < timezone.localdate():
+            noon = datetime.datetime.combine(visit_day, datetime.time(12, 0))
+            invoice.paid_at = timezone.make_aware(noon)
+            invoice.save(update_fields=["paid_at"])
+
+
 # ---------- visits and bills ----------
 
 
@@ -532,7 +579,8 @@ def add_past_visit(clinic, doctor, patient, staff, days_ago: int) -> None:
         doctor=doctor,
         visit_type=Appointment.VisitType.WALK_IN,
         date=day,
-        queue_number=1,
+        # next number in that doctor's queue for that day
+        queue_number=Appointment.objects.filter(doctor=doctor, date=day).count() + 1,
         status=Appointment.Status.COMPLETED,
         reason="Check-up",
         booked_by=staff,

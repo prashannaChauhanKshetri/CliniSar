@@ -119,3 +119,15 @@ def test_seed_lab_has_tests_and_an_order_in_each_state() -> None:
         completed = orders.get(status="COMPLETED")
         assert completed.invoice.status == "PAID"
         assert completed.items.count() == 2
+
+
+def test_seed_history_fills_both_halves_of_the_month_comparison() -> None:
+    from apps.dashboard import services as dashboard  # noqa: PLC0415
+
+    run_seed()
+    admin = User.objects.get(email="admin@sunrise.demo")
+    month = dashboard.summary(admin, "month")
+    assert month["appointments"]["value"] > 0
+    assert month["appointments"]["previous"] > 0
+    assert month["earnings"]["previous"] != "0"
+    assert month["new_patients"]["previous"] > 0

@@ -780,3 +780,77 @@ ordered by a doctor and waiting.
 5. `backend/apps/common/audit.py` - the audit mixin.
 6. `backend/config/settings/prod.py` - private S3 with 5-minute links.
 7. `backend/apps/lab/tests/test_services.py` - every status-change rule.
+
+## Phase 8 - Dashboard summary and demo data
+
+### What was built
+
+`GET /api/v1/dashboard/summary/?range=week|month` (default `week`) returns everything
+the dashboard page shows, in one request:
+
+| Key | Meaning |
+| --- | ------- |
+| `range`, `start`, `end` | the period, as ISO dates (Nepal time) |
+| `total_patients`, `total_doctors` | totals (doctors: active only) |
+| `new_patients`, `appointments` | `{value, previous, change_percent}` counts |
+| `earnings`, `vat_collected` | the same, money as exact text such as `"1500.00"` |
+| `appointments_by_status` | `[{status, count}]` for the donut chart |
+| `appointments_by_department` | `[{department, count}]`, busiest first, for the bar chart |
+| `recent_doctors` | 5 newest doctors, with department and active flag |
+| `new_patients_list` | 5 newest patients, with age and gender |
+| `stock` | low-stock medicines, expiring-soon and expired batches (with stock left) |
+| `pending_lab_orders`, `unpaid_invoices` | counts |
+
+### How the numbers are worked out (`apps/dashboard/services.py`)
+
+- **Ranges are rolling**, in Nepal time: `week` = the last 7 days including today,
+  `month` = the last 30 days. Each is compared with the period of the same length just
+  before it. Calendar months were not used because the screens show Bikram Sambat
+  months, which do not line up with AD months.
+- `change_percent` = (now - before) / before x 100, one decimal. With nothing to
+  compare (before = 0) it is `null`, and the front end shows "new" instead of a number.
+- **Earnings = sum of (total - VAT) of invoices PAID in the period**, by payment date.
+  VAT is reported separately because it is collected for the government, not earned.
+  Unpaid and cancelled invoices are never counted.
+- Every number is computed with database aggregates (`Count`, `Sum`), so the request
+  takes about 20 queries however much data there is; a test checks this.
+
+### What each role sees
+
+| Role | Sees | Hidden (`null`) |
+| ---- | ---- | --------------- |
+| Clinic admin, staff | everything in the clinic | - |
+| Doctor | own visits and own patients, pending lab orders of own patients | money, stock, unpaid invoices |
+| Pharmacist | PHARMACY earnings and VAT, stock alerts, unpaid PHARMACY bills | visits, patients, lab |
+| Lab technician | LAB earnings and VAT, pending lab orders, unpaid LAB bills | visits, patients, stock |
+
+Recent doctors and the doctor count are shown to everyone (the doctor list is already
+readable by every role). Another clinic's data is never counted; a test checks this.
+
+### Demo data, complete
+
+`seed_demo` now also adds two months of past visits (busier on some weekdays, so the
+charts vary). For the demo only, each paid consultation bill is dated on its visit's
+day, and patients' sign-up dates are spread over the two months, so the "change vs
+previous period" numbers mean something. With this, every item the brief lists for
+`seed_demo` is in: two clinics (one with VAT on pharmacy, one with VAT off), admin,
+staff, pharmacist, lab technician, three doctors with schedules, ten patients,
+medicines with several batches (one expiring soon, one expired), lab tests, and
+appointments, prescriptions, lab orders and invoices, with the logins printed.
+
+### Manual check through the front-end dev server (Sunrise)
+
+| Who | Result |
+| --- | ------ |
+| Admin, week | 10 patients, 3 doctors; appointments 10 vs 7 (+42.9%); earnings 3950.00 vs 3800.00 (+3.9%); by status and department; 1 expiring-soon and 1 expired batch; 1 pending lab order |
+| Admin, month | appointments 38 vs 39 (-2.6%); earnings 19450.00 vs 20900.00 (-6.9%) |
+| Doctor Anil | own 6 visits, only General Medicine; earnings, VAT, stock and unpaid bills hidden |
+| Pharmacist | stock alerts and pharmacy money; visits, patients and lab hidden |
+| `?range=year` | 400 |
+
+### Files to read first
+
+1. `backend/apps/dashboard/services.py` - `periods`, `scope_for`, `money_in`, `summary`.
+2. `backend/apps/dashboard/views.py` - one small view.
+3. `backend/apps/dashboard/tests/test_summary.py` - ranges, money, charts, roles.
+4. `backend/apps/common/management/commands/seed_demo.py` - the whole demo.

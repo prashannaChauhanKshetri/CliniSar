@@ -128,7 +128,7 @@ locked. There are no refunds.
 | 5   | Billing: invoices, numbering, VAT, pay, cancel       | Done   |
 | 6   | Prescriptions and pharmacy                           | Done   |
 | 7   | Lab, documents, audit log                            | Done   |
-| 8   | Dashboard summary, demo data command                 |        |
+| 8   | Dashboard summary, demo data command                 | Done   |
 | 9   | Front-end foundation                                 |        |
 | 10  | Front-end pages, print pages, dashboard              |        |
 | 11  | Production Docker, CI/CD, deployment guide, README   |        |
