@@ -70,9 +70,13 @@ Inside each Django app: `models.py` (tables), `serializers.py` (JSON in and out)
 
 ## Main flows
 
-**Appointment.** Staff pick a doctor, date and free slot, then book. A unique
-constraint on (doctor, date, start time) stops double booking; a clash returns 409.
-Booking creates a CONSULTATION invoice.
+**Visit (appointment).** Two ways in, like the real clinic:
+- *Walk-in*: staff add the patient to today's queue for a doctor; no time, just a
+  queue number (this is the clinic's paper register).
+- *Booking*: staff pick a doctor, date and free time slot. A unique constraint on
+  (doctor, date, start time) stops double booking; a clash returns 409.
+
+Both create a CONSULTATION invoice at the doctor's fee.
 
 **Prescription and pharmacy.** The doctor writes a prescription for their own
 appointment. The pharmacist dispenses it: stock is taken from the batch that expires
@@ -83,11 +87,16 @@ short, nothing changes and the API returns 409. Dispensing creates a PHARMACY in
 through one function that locks the batch row, updates its quantity and writes a
 `StockMovement` row. Movements are never edited or deleted.
 
-**Lab.** A doctor orders a test, which creates a LAB invoice. Status only moves
-ORDERED -> SAMPLE_COLLECTED -> COMPLETED, or ORDERED -> CANCELLED.
+**Lab.** One lab order holds one or more tests and gets one Lab No. and one LAB bill
+(one line per test). A doctor orders it from a visit, or lab staff create it for a
+patient who came on their own (the report then says "Consultant: Self"). Each test is
+a panel of parameters (e.g. Hematology: Hb, WBC, RBC...), each with its own result,
+unit and reference range. Status only moves ORDERED -> SAMPLE_COLLECTED ->
+COMPLETED, or ORDERED -> CANCELLED. Lab bills and reports carry the lab's own name,
+PAN and bill numbers (in the real clinic the lab is a separate business).
 
 **Invoice.** Never typed by hand; created by the three events above. Numbers are
-sequential per clinic. One function does the maths:
+sequential per clinic (lab bills have their own sequence). One function does the maths:
 
 ```
 subtotal   = sum of line totals
@@ -96,7 +105,7 @@ vat_amount = taxable x vat_rate / 100   (rounded half up to 2 decimals)
 total      = taxable + vat_amount
 ```
 
-VAT is optional per clinic and per source. The rate is copied onto the invoice when it
+VAT is optional per clinic and per source, and the admin sets how much (13%, 5%, ...). The rate is copied onto the invoice when it
 is created, so changing settings later never changes old invoices. A PAID invoice is
 locked. There are no refunds.
 

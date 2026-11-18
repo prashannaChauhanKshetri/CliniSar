@@ -288,3 +288,53 @@ Node 26 (LTS), React 19, Vite 8, Tailwind CSS 4, TypeScript 6.0.
 5. `backend/apps/accounts/serializers.py` - `DoctorSerializer` (one JSON object, two tables).
 6. `backend/apps/accounts/services.py` - `create_doctor`, `update_doctor`, `deactivate_user`.
 7. `backend/apps/clinics/views.py` - `ClinicView` and `DepartmentViewSet`.
+
+## Decisions from the real clinic documents (taken after phase 3)
+
+The real documents of a clinic in Nepalgunj (prescription pad, bill books, patient
+register, lab report templates) were studied so that CliniSar works and prints like
+the real thing. They stay outside Git because they contain real patient data. These
+decisions change the brief and are built in the phase named in brackets.
+
+### Chosen by you
+
+1. **Visits: walk-in and booking** [phase 4]. The real register is a walk-in queue
+   (date, no time). Staff can add a walk-in visit (today, next queue number, no time)
+   or book a time slot as in the brief. Slot logic and the 409 on double booking stay.
+2. **The lab is its own unit** [phases 5 and 7]. In the real clinic the lab is a
+   separate business with its own PAN and bill book. Clinic settings get a lab name
+   and lab PAN; LAB invoices and lab reports print those and use their own number
+   sequence. Login, patients and doctors stay shared.
+3. **VAT: on or off, and how much** [phase 5]. As in the brief, the admin switches
+   VAT on or off per source and sets the rate (for example 5 or 13). The printed line
+   is "VAT <rate>%", using the invoice's own rate.
+4. **Lab order: several tests, doctor optional** [phase 7]. One order holds several
+   tests, gets one Lab No. and one LAB bill with a line per test. It links to a visit
+   when a doctor ordered it; otherwise lab staff create it and the report says
+   "Consultant: Self".
+
+### Needed to match the real documents
+
+5. **Lab tests have parameters** [phase 7]. A real report is a panel: Hematology has
+   15 rows (Hb, WBC, ...), each with result, unit and reference range, some under a
+   sub-heading ("Differential Leucocyte Count"); Serology and Urine results are words
+   ("Non-Reactive", "Nil"). So a lab test gets a list of parameters, and a completed
+   order stores one result per parameter. A test can also have a method, specimen and
+   an interpretation note, printed on the report.
+6. **Patients** [phase 4]. The register records age, not date of birth, and often no
+   phone. Staff can enter age or date of birth (age is stored as an estimated date of
+   birth, so it stays correct next year); phone becomes optional.
+7. **Doctor letterhead** [phase 4]. Real prescriptions carry the doctor's details at
+   the top: qualifications ("M.B.B.S., M.S."), designation ("Consultant ENT
+   Surgeon"), NMC number, and the name in Nepali. Doctors get these fields; the
+   clinic gets its name and address in Nepali and a prescription validity note
+   ("valid for 15 days").
+8. **Printed formats** [phase 10]. Bills: S.N., Particular, Qty, Rate, Amount with
+   Rs./Ps., amount in words (lakh and crore), "Issued by". Lab reports: patient info
+   block, Lab No., collection and reporting dates, result table, `>>END OF REPORT<<`,
+   signature lines. Printed dates are numeric BS, e.g. `2082/01/02`.
+
+### Left out (ask if wanted)
+
+- Medical certificates written by a doctor.
+- Courier labels for samples sent to an outside lab.
