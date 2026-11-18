@@ -1,0 +1,32 @@
+/* Free time slots as a grid of buttons, 8px apart. */
+.slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  height: 40px;
+  border: 1px solid var(--mantine-color-default-border);
+  border-radius: var(--mantine-radius-md);
+  text-align: center;
+  font-size: var(--mantine-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.slot:hover {
+  border-color: var(--mantine-color-primary-6);
+  background: var(--mantine-color-primary-0);
+}
+
+.slot[data-selected] {
+  background: var(--mantine-color-primary-6);
+  border-color: var(--mantine-color-primary-6);
+  color: var(--mantine-color-white);
+  font-weight: 600;
+}
+
+.slot:focus-visible {
+  outline: 2px solid var(--mantine-color-primary-6);
+  outline-offset: 2px;
+}

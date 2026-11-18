@@ -298,3 +298,13 @@ def test_booking_numbers_follow_each_other(login_as, schedule) -> None:
     book(client, schedule, start_time="10:00")
     book(client, schedule, start_time="10:20")
     assert sorted(Invoice.objects.values_list("number", flat=True)) == [1, 2]
+
+
+def test_bill_of_one_event_can_be_found(login_as, clinic, one_of_each) -> None:
+    lab_bill = one_of_each[Source.LAB]
+    rows = (
+        login_as(UserFactory(clinic=clinic))
+        .get(INVOICES, {"lab_order": str(lab_bill.lab_order_id)})
+        .data["results"]
+    )
+    assert [row["id"] for row in rows] == [str(lab_bill.id)]

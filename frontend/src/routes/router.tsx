@@ -36,19 +36,34 @@ const SCREENS: Record<string, LazyExoticComponent<ComponentType> | null> = {
     'PatientDetailPage',
   ),
   '/schedule': page(() => import('../features/scheduling/SchedulePage'), 'SchedulePage'),
-  '/appointments': null,
-  '/appointments/new': null,
-  '/prescriptions': null,
-  '/prescriptions/:id': null,
-  '/medicines': null,
-  '/medicines/:id': null,
-  '/expiry': null,
-  '/lab-tests': null,
-  '/lab-orders': null,
-  '/lab-orders/:id': null,
-  '/invoices': null,
-  '/invoices/:id': null,
-  '/documents': null,
+  '/appointments': page(
+    () => import('../features/appointments/AppointmentsPage'),
+    'AppointmentsPage',
+  ),
+  '/appointments/new': page(
+    () => import('../features/appointments/NewAppointmentPage'),
+    'NewAppointmentPage',
+  ),
+  '/prescriptions': page(
+    () => import('../features/prescriptions/PrescriptionsPage'),
+    'PrescriptionsPage',
+  ),
+  '/prescriptions/:id': page(
+    () => import('../features/prescriptions/PrescriptionDetailPage'),
+    'PrescriptionDetailPage',
+  ),
+  '/medicines': page(() => import('../features/pharmacy/MedicinesPage'), 'MedicinesPage'),
+  '/medicines/:id': page(
+    () => import('../features/pharmacy/MedicineDetailPage'),
+    'MedicineDetailPage',
+  ),
+  '/expiry': page(() => import('../features/pharmacy/ExpiryPage'), 'ExpiryPage'),
+  '/lab-tests': page(() => import('../features/lab/LabTestsPage'), 'LabTestsPage'),
+  '/lab-orders': page(() => import('../features/lab/LabOrdersPage'), 'LabOrdersPage'),
+  '/lab-orders/:id': page(() => import('../features/lab/LabOrderDetailPage'), 'LabOrderDetailPage'),
+  '/invoices': page(() => import('../features/billing/InvoicesPage'), 'InvoicesPage'),
+  '/invoices/:id': page(() => import('../features/billing/InvoiceDetailPage'), 'InvoiceDetailPage'),
+  '/documents': page(() => import('../features/documents/DocumentsPage'), 'DocumentsPage'),
 }
 
 function screenRoute(path: string, Page: LazyExoticComponent<ComponentType> | null): RouteObject {
