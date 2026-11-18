@@ -550,3 +550,26 @@ Run through `http://localhost:5173/api/...`:
 4. `backend/apps/clinics/models.py` - `Clinic.save()` and the counters.
 5. `backend/apps/scheduling/services.py` - where booking calls the invoice service.
 6. `backend/apps/billing/tests/test_services.py` - maths, VAT, numbering tests.
+
+## Demo data: `seed_demo` (started early, on request)
+
+`python manage.py seed_demo` creates two made-up clinics for demos and manual
+testing. It was asked for before phase 6, so it covers what exists so far; phases
+6 to 8 add medicines and batches, lab tests and orders, and prescriptions to it.
+
+| Clinic                | Slug    | Settings                                                    |
+| --------------------- | ------- | ----------------------------------------------------------- |
+| Sunrise Health Clinic | sunrise | VAT 13% on pharmacy; lab bills separately ("Sunrise Path Lab") |
+| Himal Care Clinic     | himal   | VAT off; one bill book                                      |
+
+Each clinic has an admin, a staff user, a pharmacist, a lab technician, three
+doctors (General Medicine, Gynecology, ENT; Sunday to Friday 09:00-13:00), ten
+patients registered by age, two weeks of past visits with bills (most paid), four
+walk-ins in today's queue and four future bookings. Logins are printed at the end,
+for example `staff@sunrise.demo`; every password is `demo-pass-123`.
+
+Visits are made through the same services as the API, so every visit has its bill.
+Past visits are written directly, because the booking service (correctly) refuses
+past slots. Running the command again changes nothing.
+
+Read: `backend/apps/common/management/commands/seed_demo.py`.
