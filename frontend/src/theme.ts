@@ -130,7 +130,11 @@ export const theme = createTheme({
     Card: { defaultProps: { withBorder: true, radius: 'lg', padding: 'lg', shadow: 'none' } },
     Paper: { defaultProps: { radius: 'lg' } },
     Modal: { defaultProps: { radius: 'lg', centered: true, padding: 'lg' } },
-    Badge: { defaultProps: { radius: 'sm', variant: 'light', size: 'md' } },
+    // Sentence case ("Active"), as in the reference design, instead of capitals.
+    Badge: {
+      defaultProps: { radius: 'sm', variant: 'light', size: 'md' },
+      styles: { root: { textTransform: 'none', fontWeight: 600 } },
+    },
     Tooltip: { defaultProps: { withArrow: true } },
     Table: {
       defaultProps: { verticalSpacing: 'sm', horizontalSpacing: 'md', highlightOnHover: true },

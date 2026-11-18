@@ -137,8 +137,7 @@ REST_FRAMEWORK = {
     # Used by LoginRateThrottle: at most 5 login attempts per minute from one IP address.
     "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 20,
+    "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.StandardPagination",
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
         # Enables ?search=... on views that set search_fields.

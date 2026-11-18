@@ -25,6 +25,11 @@ const STATUS_COLORS: Record<string, string> = {
   OK: 'success',
   NORMAL: 'success',
   ABNORMAL: 'danger',
+  CONSULTATION: 'primary',
+  PHARMACY: 'slate',
+  LAB: 'grey',
+  SCHEDULED: 'primary',
+  WALK_IN: 'slate',
 }
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

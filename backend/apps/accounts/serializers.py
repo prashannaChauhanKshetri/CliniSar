@@ -23,12 +23,27 @@ class UserSerializer(serializers.ModelSerializer):
     """The logged-in user. Only name and phone can be edited by the user themself."""
 
     clinic = ClinicSummarySerializer(read_only=True)
+    # For doctors: the id of their DoctorProfile (e.g. to open "My schedule"); else null.
+    doctor_profile_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name", "phone", "role", "clinic"]
+        fields = [
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "phone",
+            "role",
+            "clinic",
+            "doctor_profile_id",
+        ]
         # A user must never be able to change their own email, role or clinic.
         read_only_fields = ["id", "email", "role"]
+
+    def get_doctor_profile_id(self, user: User) -> str | None:
+        profile = getattr(user, "doctor_profile", None)
+        return str(profile.id) if profile else None
 
 
 class LoginSerializer(serializers.Serializer):

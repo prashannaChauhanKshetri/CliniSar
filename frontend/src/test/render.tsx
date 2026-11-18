@@ -25,6 +25,7 @@ export function makeUser(role: Role, overrides: Partial<User> = {}): User {
     phone: '',
     role,
     clinic: { id: 'clinic-1', name: 'Sample Clinic', slug: 'sample' },
+    doctor_profile_id: role === 'DOCTOR' ? 'doctor-1' : null,
     ...overrides,
   }
 }
@@ -36,6 +37,7 @@ export function fakeAuth(overrides: Partial<AuthValue> = {}): AuthValue {
     notice: null,
     signIn: async () => makeUser('STAFF'),
     signOut: async () => {},
+    reloadUser: async () => {},
     ...overrides,
   }
 }

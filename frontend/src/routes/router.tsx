@@ -1,40 +1,66 @@
 /**
  * All the addresses of the app. Every signed-in page sits inside AppLayout (sidebar
  * and top bar) and behind RequireRole (the same role list as the sidebar).
+ *
+ * Pages are loaded on first visit (React.lazy), so the first download stays small and
+ * a pharmacist never downloads the code of, say, the doctors' screens.
  */
+import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
 import { Navigate, type RouteObject } from 'react-router'
 import { AppLayout } from '../components/layout/AppLayout'
+import { PageLoader } from '../components/PageLoader'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { RequireAuth } from './RequireAuth'
 import { RequireRole } from './RequireRole'
 
-/** The screens from the brief. Each becomes a real page in phase 10. */
-const SCREEN_PATHS = [
-  '/dashboard',
-  '/doctors',
-  '/staff',
-  '/patients',
-  '/patients/:id',
-  '/departments',
-  '/settings',
-  '/appointments',
-  '/appointments/new',
-  '/schedule',
-  '/prescriptions',
-  '/prescriptions/:id',
-  '/medicines',
-  '/medicines/:id',
-  '/expiry',
-  '/lab-tests',
-  '/lab-orders',
-  '/lab-orders/:id',
-  '/invoices',
-  '/invoices/:id',
-  '/documents',
-  '/profile',
-]
+/** lazy() for files that export a named component. */
+function page<K extends string>(
+  load: () => Promise<Record<K, ComponentType>>,
+  name: K,
+): LazyExoticComponent<ComponentType> {
+  return lazy(async () => ({ default: (await load())[name] }))
+}
+
+const SCREENS: Record<string, LazyExoticComponent<ComponentType> | null> = {
+  '/dashboard': null,
+  '/doctors': page(() => import('../features/admin/DoctorsPage'), 'DoctorsPage'),
+  '/staff': page(() => import('../features/admin/StaffPage'), 'StaffPage'),
+  '/departments': page(() => import('../features/admin/DepartmentsPage'), 'DepartmentsPage'),
+  '/settings': page(() => import('../features/admin/SettingsPage'), 'SettingsPage'),
+  '/profile': page(() => import('../features/admin/ProfilePage'), 'ProfilePage'),
+  '/patients': page(() => import('../features/patients/PatientsPage'), 'PatientsPage'),
+  '/patients/:id': page(
+    () => import('../features/patients/PatientDetailPage'),
+    'PatientDetailPage',
+  ),
+  '/schedule': page(() => import('../features/scheduling/SchedulePage'), 'SchedulePage'),
+  '/appointments': null,
+  '/appointments/new': null,
+  '/prescriptions': null,
+  '/prescriptions/:id': null,
+  '/medicines': null,
+  '/medicines/:id': null,
+  '/expiry': null,
+  '/lab-tests': null,
+  '/lab-orders': null,
+  '/lab-orders/:id': null,
+  '/invoices': null,
+  '/invoices/:id': null,
+  '/documents': null,
+}
+
+function screenRoute(path: string, Page: LazyExoticComponent<ComponentType> | null): RouteObject {
+  return {
+    path,
+    element: (
+      <RequireRole>
+        <Suspense fallback={<PageLoader />}>{Page ? <Page /> : <PlaceholderPage />}</Suspense>
+      </RequireRole>
+    ),
+  }
+}
 
 export const routes: RouteObject[] = [
   { path: '/login', element: <LoginPage /> },
@@ -45,14 +71,7 @@ export const routes: RouteObject[] = [
         element: <AppLayout />,
         children: [
           { index: true, element: <Navigate to="/dashboard" replace /> },
-          ...SCREEN_PATHS.map((path) => ({
-            path,
-            element: (
-              <RequireRole>
-                <PlaceholderPage />
-              </RequireRole>
-            ),
-          })),
+          ...Object.entries(SCREENS).map(([path, Page]) => screenRoute(path, Page)),
           { path: '*', element: <NotFoundPage /> },
         ],
       },

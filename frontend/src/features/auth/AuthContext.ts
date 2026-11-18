@@ -11,6 +11,8 @@ export interface AuthValue {
   notice: string | null
   signIn: (email: string, password: string) => Promise<User>
   signOut: () => Promise<void>
+  /** Read the user again after they changed their own details. */
+  reloadUser: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthValue | null>(null)

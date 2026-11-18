@@ -26,6 +26,8 @@ export interface User {
   phone: string
   role: Role
   clinic: ClinicSummary | null
+  /** Set for doctors: the id used by doctors/<id>/schedules/. */
+  doctor_profile_id: string | null
 }
 
 /** Every list endpoint answers with pages of 20. */

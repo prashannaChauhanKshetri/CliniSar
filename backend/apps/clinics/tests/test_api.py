@@ -186,3 +186,11 @@ def test_lab_invoice_counter_cannot_be_set_through_the_api(login_as) -> None:
     login_as(admin).patch(CLINIC, {"last_lab_invoice_number": 50})
     admin.clinic.refresh_from_db()
     assert admin.clinic.last_lab_invoice_number == 0
+
+
+def test_lists_accept_a_page_size_up_to_100(login_as) -> None:
+    admin = UserFactory(role=Role.CLINIC_ADMIN)
+    DepartmentFactory.create_batch(30, clinic=admin.clinic)
+    client = login_as(admin)
+    assert len(client.get(DEPARTMENTS, {"page_size": 25}).data["results"]) == 25
+    assert len(client.get(DEPARTMENTS, {"page_size": 500}).data["results"]) == 30  # capped at 100

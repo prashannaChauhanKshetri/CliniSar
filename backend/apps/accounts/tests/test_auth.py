@@ -271,3 +271,11 @@ def test_change_password_then_log_in_with_the_new_one(login_as, api_client) -> N
     assert response.status_code == 204
     assert log_in(api_client, user).status_code == 401  # old password no longer works
     assert log_in(api_client, user, password="a-new-pass-456").status_code == 200
+
+
+def test_me_tells_a_doctor_their_profile_id(login_as) -> None:
+    from apps.accounts.tests.factories import DoctorProfileFactory  # noqa: PLC0415
+
+    doctor = DoctorProfileFactory()
+    assert login_as(doctor.user).get(ME).data["doctor_profile_id"] == str(doctor.id)
+    assert login_as(UserFactory()).get(ME).data["doctor_profile_id"] is None
