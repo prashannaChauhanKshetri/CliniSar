@@ -17,6 +17,8 @@ from apps.accounts.tests.factories import DoctorProfileFactory, PatientProfileFa
 from apps.billing.tests.factories import InvoiceFactory
 from apps.clinics.models import Clinic
 from apps.clinics.tests.factories import ClinicFactory, DepartmentFactory
+from apps.pharmacy.tests.factories import MedicineBatchFactory, MedicineFactory
+from apps.records.tests.factories import PrescriptionFactory
 from apps.scheduling.tests.factories import AppointmentFactory, DoctorScheduleFactory
 
 # What we try on another clinic's object: (HTTP method, path after "<id>/").
@@ -31,6 +33,8 @@ class Endpoint:
     make_object: Callable[[Clinic], object]
     # Requests tried on another clinic's object; every one must answer 404.
     detail_requests: list[tuple[str, str]] = field(default_factory=lambda: EDITABLE)
+    # The clinic A user who tries them: one who could do these things in their own clinic.
+    role: str = User.Role.CLINIC_ADMIN
 
     def __str__(self) -> str:  # used as the test id, e.g. "departments"
         return self.url.strip("/")
@@ -50,6 +54,27 @@ ENDPOINTS = [
         "/api/v1/invoices/",
         lambda clinic: InvoiceFactory(clinic=clinic),
         detail_requests=[("get", ""), ("post", "pay/"), ("post", "cancel/")],
+    ),
+    Endpoint(
+        "/api/v1/prescriptions/",
+        lambda clinic: PrescriptionFactory(clinic=clinic),
+        detail_requests=[("get", ""), ("post", "dispense/")],
+        role=User.Role.PHARMACIST,
+    ),
+    Endpoint(
+        "/api/v1/medicines/",
+        lambda clinic: MedicineFactory(clinic=clinic),
+        detail_requests=[
+            *EDITABLE,
+            ("get", "batches/"),
+            ("post", "batches/"),
+            ("get", "stock-movements/"),
+        ],
+    ),
+    Endpoint(
+        "/api/v1/batches/",
+        lambda clinic: MedicineBatchFactory(clinic=clinic),
+        detail_requests=[("get", ""), ("post", "adjust/")],
     ),
 ]
 
@@ -71,7 +96,7 @@ def test_other_clinics_objects_are_hidden(endpoint, two_clinics, login_as) -> No
     clinic_a, clinic_b = two_clinics
     ours = endpoint.make_object(clinic_a)
     theirs = endpoint.make_object(clinic_b)
-    client = login_as(UserFactory(clinic=clinic_a, role=User.Role.CLINIC_ADMIN))
+    client = login_as(UserFactory(clinic=clinic_a, role=endpoint.role))
 
     # The list shows ours and not theirs.
     listed = ids_in_list(client.get(endpoint.url))

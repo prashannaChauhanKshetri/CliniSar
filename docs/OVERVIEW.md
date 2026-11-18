@@ -126,7 +126,7 @@ locked. There are no refunds.
 | 3   | TenantViewSet, clinic endpoints, tenant isolation test | Done |
 | 4   | Schedules, slots, appointments, walk-ins             | Done   |
 | 5   | Billing: invoices, numbering, VAT, pay, cancel       | Done   |
-| 6   | Prescriptions and pharmacy                           |        |
+| 6   | Prescriptions and pharmacy                           | Done   |
 | 7   | Lab, documents, audit log                            |        |
 | 8   | Dashboard summary, demo data command                 |        |
 | 9   | Front-end foundation                                 |        |

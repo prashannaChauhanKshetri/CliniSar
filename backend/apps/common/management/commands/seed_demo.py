@@ -1,8 +1,9 @@
 """manage.py seed_demo: fill the database with two made-up clinics for demos and manual testing.
 
-Everything here is invented. Visits are booked through the same services the API uses,
-so every visit gets its bill exactly as in real use. Running it again does nothing if
-the demo clinics already exist.
+Everything here is invented. Visits, stock and prescriptions go through the same
+services the API uses, so bills and stock movements are exactly as in real use.
+Running it again only adds parts that are missing (for example the pharmacy, which
+was added to the demo later); it never duplicates anything.
 """
 
 import datetime
@@ -17,6 +18,9 @@ from apps.accounts.models import DoctorProfile, PatientProfile, User
 from apps.accounts.services import estimate_date_of_birth
 from apps.billing import services as billing
 from apps.clinics.models import Clinic, Department
+from apps.pharmacy import services as pharmacy
+from apps.pharmacy.models import Medicine, MedicineBatch
+from apps.records import services as records
 from apps.scheduling import services as scheduling
 from apps.scheduling.models import Appointment, DoctorSchedule
 
@@ -80,6 +84,53 @@ PATIENTS = [
     ("Suresh", "Pun", 19, "MALE", "Salyan", "9800000010"),
 ]
 
+MEDICINES = [
+    # name, generic, strength, form, price, reorder level, batches [(number, qty, expires in days)]
+    ("Paracetamol", "Paracetamol", "500mg", "Tablet", "2.00", 100, [("PCM-101", 400, 300)]),
+    # One batch expires soon (within 90 days) and is dispensed first.
+    (
+        "Amoxicillin",
+        "Amoxicillin",
+        "500mg",
+        "Capsule",
+        "12.00",
+        50,
+        [("AMX-201", 60, 45), ("AMX-202", 200, 400)],
+    ),
+    # One batch has already expired: it is never dispensed and not counted as stock.
+    (
+        "Cetirizine",
+        "Cetirizine",
+        "10mg",
+        "Tablet",
+        "3.00",
+        30,
+        [("CTZ-301", 40, -20), ("CTZ-302", 150, 500)],
+    ),
+    ("Omeprazole", "Omeprazole", "20mg", "Capsule", "6.00", 30, [("OMP-401", 120, 250)]),
+    ("ORS", "Oral rehydration salts", "21g", "Sachet", "20.00", 20, [("ORS-501", 80, 200)]),
+    # Low stock: 8 left with a reorder level of 10.
+    ("Cough Syrup", "Dextromethorphan", "100ml", "Syrup", "120.00", 10, [("CS-601", 8, 180)]),
+]
+
+PRESCRIPTIONS = [
+    # diagnosis, [(medicine name, dosage, frequency, days, quantity)], dispense?
+    (
+        "Viral fever",
+        [
+            ("Paracetamol", "500mg", "1-1-1", 3, 9),
+            ("ORS", "1 sachet", "after each loose motion", 2, 4),
+        ],
+        True,
+    ),
+    (
+        "Upper respiratory tract infection",
+        [("Amoxicillin", "500mg", "1-1-1", 5, 15), ("Cetirizine", "10mg", "0-0-1", 5, 5)],
+        True,
+    ),
+    ("Gastritis", [("Omeprazole", "20mg", "1-0-0 before breakfast", 14, 14)], False),
+]
+
 # Saturday is the weekly holiday in Nepal; doctors work Sunday to Friday mornings.
 WORKING_DAYS = [
     DoctorSchedule.Weekday.SUNDAY,
@@ -95,14 +146,22 @@ class Command(BaseCommand):
     help = "Create two demo clinics with users, doctors, patients, visits and bills."
 
     def handle(self, *args, **options) -> None:
-        if Clinic.objects.filter(slug__in=[c["slug"] for c in CLINICS]).exists():
-            self.stdout.write("Demo clinics already exist; nothing was changed.\n")
+        random.seed(2083)  # the same demo data every time
+        added = []
+        with transaction.atomic():
+            for details in CLINICS:
+                clinic = Clinic.objects.filter(slug=details["slug"]).first()
+                if clinic is None:
+                    clinic = seed_clinic(details)
+                    added.append(f"{clinic.name}: clinic, people and visits")
+                if not Medicine.objects.filter(clinic=clinic).exists():
+                    seed_pharmacy(clinic)
+                    added.append(f"{clinic.name}: medicines and prescriptions")
+
+        if added:
+            self.stdout.write(self.style.SUCCESS("Added:\n  " + "\n  ".join(added) + "\n"))
         else:
-            random.seed(2083)  # the same demo data every time
-            with transaction.atomic():
-                for details in CLINICS:
-                    seed_clinic(details)
-            self.stdout.write(self.style.SUCCESS("Demo clinics created.\n"))
+            self.stdout.write("The demo data is already complete; nothing was changed.\n")
         self.stdout.write(logins_table())
 
 
@@ -167,6 +226,79 @@ def make_patient(clinic, first, last, age, gender, address, phone) -> PatientPro
         address=address,
         phone=phone,
     )
+
+
+# ---------- pharmacy and prescriptions ----------
+
+
+def seed_pharmacy(clinic: Clinic) -> None:
+    """Medicines with batches, then prescriptions for past visits (most dispensed)."""
+    pharmacist = clinic.users.get(role=User.Role.PHARMACIST)
+    for name, generic, strength, form, price, reorder, batches in MEDICINES:
+        medicine = Medicine.objects.create(
+            clinic=clinic,
+            name=name,
+            generic_name=generic,
+            strength=strength,
+            form=form,
+            unit_price=Decimal(price),
+            reorder_level=reorder,
+        )
+        for batch_number, quantity, expires_in in batches:
+            add_batch(medicine, batch_number, quantity, expires_in, pharmacist)
+
+    past_visits = Appointment.objects.filter(
+        clinic=clinic, status=Appointment.Status.COMPLETED, prescription__isnull=True
+    ).order_by("-date")
+    for visit, (diagnosis, lines, dispense) in zip(past_visits, PRESCRIPTIONS, strict=False):
+        prescription = records.create_prescription(
+            appointment=visit,
+            doctor_user=visit.doctor.user,
+            diagnosis=diagnosis,
+            notes="",
+            items=[prescription_line(clinic, *line) for line in lines],
+        )
+        if dispense:
+            pharmacy.dispense_prescription(prescription, user=pharmacist)
+
+
+def add_batch(medicine, batch_number, quantity, expires_in, pharmacist) -> None:
+    """Buy a batch through the stock service.
+
+    A purchase refuses a past expiry date (correctly), so the demo's already-expired
+    batch is created empty and filled through change_stock(), like an old purchase.
+    """
+    expiry_date = timezone.localdate() + datetime.timedelta(days=expires_in)
+    if expires_in > 0:
+        pharmacy.record_purchase(
+            medicine,
+            batch_number=batch_number,
+            expiry_date=expiry_date,
+            quantity=quantity,
+            user=pharmacist,
+        )
+        return
+    batch = MedicineBatch.objects.create(
+        clinic=medicine.clinic,
+        medicine=medicine,
+        batch_number=batch_number,
+        expiry_date=expiry_date,
+        quantity=0,
+    )
+    pharmacy.change_stock(
+        batch, change=quantity, reason="PURCHASE", note="Purchase", user=pharmacist
+    )
+
+
+def prescription_line(clinic, name, dosage, frequency, days, quantity) -> dict:
+    return {
+        "medicine": Medicine.objects.get(clinic=clinic, name=name),
+        "dosage": dosage,
+        "frequency": frequency,
+        "duration_days": days,
+        "quantity": quantity,
+        "instructions": "",
+    }
 
 
 # ---------- visits and bills ----------

@@ -573,3 +573,104 @@ Past visits are written directly, because the booking service (correctly) refuse
 past slots. Running the command again changes nothing.
 
 Read: `backend/apps/common/management/commands/seed_demo.py`.
+
+## Phase 6 - Prescriptions and pharmacy
+
+### What was built
+
+| Endpoint | Who | What |
+| -------- | --- | ---- |
+| `prescriptions/` GET | admin, staff, pharmacist: all; doctor: own patients | list and detail with items |
+| `prescriptions/` POST | doctor | diagnosis, notes and medicine lines, for own visit |
+| `POST prescriptions/<id>/dispense/` | pharmacist | hand over the medicines, create the PHARMACY bill |
+| `medicines/` CRUD | admin, pharmacist (doctor: read) | includes `available_stock`, `is_low_stock`; `?low_stock=true` |
+| `medicines/<id>/batches/` GET, POST | admin, pharmacist | list batches / record a purchase |
+| `medicines/<id>/stock-movements/` | admin, pharmacist | the stock history |
+| `batches/` GET | admin, pharmacist | `?expiring_within=<days>`, `?expired=true` |
+| `POST batches/<id>/adjust/` | admin, pharmacist | `change` (+ or -) and a required `note` |
+
+Prescriptions and batches cannot be edited or deleted directly (405).
+
+### How stock works (`apps/pharmacy/services.py`)
+
+- A medicine has **no stock number**. Stock lives in batches, each with its own expiry
+  date. `available_stock` = sum of batches whose expiry date is today or later,
+  computed in the same SQL query as the list.
+- **`change_stock()` is the only code that changes a batch quantity.** In one
+  transaction it locks the batch row, refuses to go below zero, updates the quantity
+  and writes a `StockMovement`. So a batch's quantity always equals the sum of its
+  movements, and two pharmacists cannot sell the same last strip.
+- **Purchase**: creates the batch (expiry must be in the future) and a PURCHASE
+  movement.
+- **Adjustment**: an ADJUSTMENT movement with a required note. This is also how an
+  expired batch is written off.
+- The database itself refuses a negative quantity, as a last line of defence.
+
+### How dispensing works
+
+All in one transaction:
+
+1. Lock the prescription; it must still be PENDING (dispensed once).
+2. For each medicine: lock its batches that are not expired and not empty, ordered
+   by expiry date (first expired, first out).
+3. If the quantity needed is more than their total: **409** naming the medicine. The
+   rollback undoes anything already taken for earlier medicines, so nothing changes.
+4. Otherwise take from the earliest batch, continuing into the next one if it runs
+   out, with one DISPENSE movement per batch used.
+5. Mark DISPENSED with who and when, and create the PHARMACY invoice: one line per
+   medicine, quantity x the medicine's price, with VAT if switched on for pharmacy.
+
+Expired batches are never dispensed. A batch expiring today can still be used.
+
+### Prescription rules (`apps/records/services.py`)
+
+- Only the visit's own doctor can write it.
+- Not for a CANCELLED or NO_SHOW visit; BOOKED or COMPLETED is fine.
+- One per visit (a second gets 400; two at the same instant hit the unique
+  constraint and get 409).
+- At least one medicine, each medicine once, quantity at least 1, and every medicine
+  from the same clinic.
+
+### Decisions to know about
+
+- **A doctor sees prescriptions of their own patients**, including those written by
+  colleagues for the same patient (the patient's history). Appointments stay "own
+  visits only".
+- **Only pharmacists dispense.** The brief gives dispensing to the pharmacist alone;
+  the admin manages medicines and stock but does not hand out medicines.
+- **Doctors can read the medicine list** (they need it to prescribe) but not batches.
+- **Staff cannot open the pharmacy**; they see prescriptions only.
+- **Expiry status** on every batch: `EXPIRED`, `EXPIRING_SOON` (within 90 days) or
+  `OK`, so the front end only shows the badge.
+
+### Demo data
+
+`seed_demo` now also adds six medicines per clinic with batches: Amoxicillin has a
+batch expiring in 45 days, Cetirizine has an expired batch with 40 units left, and
+Cough Syrup is low stock (8 left, reorder level 10). Three past visits get
+prescriptions; two are dispensed (through the real service, so the soon-expiring
+Amoxicillin batch was used first) and one is pending. Running `seed_demo` on a
+database seeded earlier adds only this missing pharmacy part.
+
+### Manual check through the front-end dev server (demo clinic Sunrise)
+
+| Step | Result |
+| ---- | ------ |
+| Medicine list | stock excludes the expired Cetirizine batch; Cough Syrup flagged LOW STOCK; `?low_stock=true` gives only Cough Syrup |
+| `?expiring_within=90` / `?expired=true` | Amoxicillin AMX-201 / Cetirizine CTZ-301 |
+| Dispense the pending Omeprazole prescription | 200; bill 14 x 6.00 = 84.00 + VAT 13% 10.92 = **94.92** |
+| Dispense it again | 400 |
+| Doctor prescribes 20 Cough Syrup (8 in stock) plus Paracetamol | created; dispensing gives **409** "Not enough Cough Syrup 100ml: 20 needed, 8 in stock." and Paracetamol stock stays unchanged |
+| Second prescription for the same visit | 400 |
+| Purchase 50 syrup, adjust -2, dispense again | 200: 8 taken from the earlier-expiring batch, 12 from the new one |
+| Staff opens medicines / doctor opens batches | 403 / 403 |
+| Himal pharmacist opens a Sunrise prescription | 404 |
+
+### Files to read first
+
+1. `backend/apps/pharmacy/services.py` - `change_stock`, purchase, adjust, dispense.
+2. `backend/apps/pharmacy/models.py` - `with_available_stock()` and the constraints.
+3. `backend/apps/records/services.py` - who may prescribe.
+4. `backend/apps/pharmacy/views.py` and `backend/apps/records/views.py` - thin views.
+5. `backend/apps/pharmacy/tests/test_stock_services.py` - earliest-first, spill-over,
+   expired batches and the "nothing changes" 409.

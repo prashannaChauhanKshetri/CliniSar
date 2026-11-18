@@ -1,0 +1,65 @@
+"""Prescription endpoints. Rules live in records/services.py and pharmacy/services.py."""
+
+from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+from apps.accounts.models import User
+from apps.common.permissions import IsAdminOrStaff, IsDoctor, IsPharmacist
+from apps.common.views import TenantViewSet
+from apps.pharmacy import services as pharmacy
+
+from . import services
+from .models import Prescription
+from .serializers import PrescriptionCreateSerializer, PrescriptionSerializer
+
+
+class PrescriptionViewSet(TenantViewSet):
+    """prescriptions/: list, create (doctor), retrieve, plus dispense/ (pharmacist)."""
+
+    queryset = Prescription.objects.select_related(
+        "appointment__patient", "appointment__doctor__user", "dispensed_by"
+    ).prefetch_related("items__medicine")
+    serializer_class = PrescriptionSerializer
+    filterset_fields = ["status", "appointment", "appointment__patient"]
+    search_fields = ["appointment__patient__first_name", "appointment__patient__last_name"]
+    http_method_names = ["get", "post"]
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsDoctor()]
+        if self.action == "dispense":
+            return [IsPharmacist()]
+        return [(IsAdminOrStaff | IsDoctor | IsPharmacist)()]
+
+    def get_queryset(self):
+        """Row-level rule: a doctor sees the prescriptions of their own patients."""
+        queryset = super().get_queryset()
+        user = self.request.user
+        if user.is_authenticated and user.role == User.Role.DOCTOR:
+            own_patients = user.doctor_profile.appointments.values("patient")
+            queryset = queryset.filter(appointment__patient__in=own_patients)
+        return queryset
+
+    @extend_schema(request=PrescriptionCreateSerializer, responses={201: PrescriptionSerializer})
+    def create(self, request) -> Response:
+        serializer = PrescriptionCreateSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        prescription = services.create_prescription(
+            appointment=data["appointment"],
+            doctor_user=request.user,
+            diagnosis=data["diagnosis"],
+            notes=data["notes"],
+            items=data["items"],
+        )
+        prescription = self.get_queryset().get(pk=prescription.pk)
+        return Response(PrescriptionSerializer(prescription).data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(request=None, responses=PrescriptionSerializer)
+    @action(detail=True, methods=["post"])
+    def dispense(self, request, pk=None) -> Response:
+        prescription = pharmacy.dispense_prescription(self.get_object(), user=request.user)
+        prescription = self.get_queryset().get(pk=prescription.pk)
+        return Response(PrescriptionSerializer(prescription).data)
