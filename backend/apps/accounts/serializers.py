@@ -1,6 +1,7 @@
 """Serializers for authentication and for managing staff, doctors and patients."""
 
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework import serializers
 
 from apps.clinics.models import Clinic, Department
@@ -167,6 +168,9 @@ class DoctorSerializer(serializers.ModelSerializer):
             "department",
             "department_name",
             "specialization",
+            "name_nepali",
+            "qualifications",
+            "designation",
             "license_number",
             "consultation_fee",
             "bio",
@@ -203,9 +207,16 @@ class DoctorSerializer(serializers.ModelSerializer):
 
 
 class PatientSerializer(serializers.ModelSerializer):
-    """A patient record. There is no clinic field: the clinic comes from the logged-in user."""
+    """A patient record. There is no clinic field: the clinic comes from the logged-in user.
+
+    Staff may send either date_of_birth or age_years (the paper register only has age).
+    """
 
     full_name = serializers.CharField(read_only=True)
+    age = serializers.SerializerMethodField()
+    age_years = serializers.IntegerField(
+        write_only=True, required=False, min_value=0, max_value=130
+    )
 
     class Meta:
         model = PatientProfile
@@ -216,9 +227,34 @@ class PatientSerializer(serializers.ModelSerializer):
             "full_name",
             "phone",
             "date_of_birth",
+            "date_of_birth_is_estimated",
+            "age",
+            "age_years",
             "gender",
             "blood_group",
             "address",
             "emergency_contact",
             "created_at",
         ]
+        read_only_fields = ["date_of_birth_is_estimated"]
+
+    def get_age(self, patient: PatientProfile) -> int | None:
+        """Age today in Nepal, worked out from the date of birth."""
+        return patient.age_on(timezone.localdate())
+
+    def validate_date_of_birth(self, value):
+        if value and value > timezone.localdate():
+            raise serializers.ValidationError("Date of birth cannot be in the future.")
+        return value
+
+    def validate(self, data: dict) -> dict:
+        """Turn age_years into an estimated date of birth."""
+        age_years = data.pop("age_years", None)
+        if age_years is not None and data.get("date_of_birth"):
+            raise serializers.ValidationError("Send either date_of_birth or age_years, not both.")
+        if age_years is not None:
+            data["date_of_birth"] = services.estimate_date_of_birth(age_years, timezone.localdate())
+            data["date_of_birth_is_estimated"] = True
+        elif "date_of_birth" in data:
+            data["date_of_birth_is_estimated"] = False
+        return data

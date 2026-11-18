@@ -13,10 +13,13 @@ class ClinicSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "name_nepali",
             "slug",
             "phone",
             "address",
+            "address_nepali",
             "pan_number",
+            "prescription_note",
             "receipt_width_mm",
             "vat_rate",
             "vat_on_consultation",

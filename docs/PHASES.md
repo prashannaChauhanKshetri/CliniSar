@@ -338,3 +338,114 @@ decisions change the brief and are built in the phase named in brackets.
 
 - Medical certificates written by a doctor.
 - Courier labels for samples sent to an outside lab.
+
+## Phase 4 - Schedules, slots, appointments and walk-ins
+
+### What was built
+
+- **Endpoints** under `/api/v1/`:
+
+  | Endpoint                          | What it does                                        |
+  | --------------------------------- | --------------------------------------------------- |
+  | `doctors/<id>/schedules/`         | CRUD a doctor's weekly working hours.               |
+  | `GET doctors/<id>/slots/?date=`   | Free slots of that doctor on that day.              |
+  | `appointments/`                   | List (with filters), create, retrieve.              |
+  | `POST appointments/<id>/cancel/`  | Cancel with a reason (BOOKED only).                 |
+  | `POST appointments/<id>/complete/`| Mark as seen (BOOKED only).                         |
+
+- **Two kinds of visit** (`visit_type`):
+  - `SCHEDULED`: a booked time slot (`date`, `start_time`, `end_time`).
+  - `WALK_IN`: today, no time, a `queue_number` 1, 2, 3... per doctor per day.
+- **Patients** can be registered by age (`age_years`) instead of date of birth, and
+  phone is optional. Every patient response includes the current `age`.
+- **Doctor letterhead fields**: `name_nepali`, `qualifications`, `designation`
+  (NMC number is the existing `license_number`).
+- **Clinic fields**: `name_nepali`, `address_nepali`, `prescription_note`.
+
+### How slots are calculated (`apps/scheduling/services.py`)
+
+Slots are never stored. For a doctor and a day:
+
+1. Take the doctor's schedule blocks for that weekday (e.g. Monday 10:00-13:00).
+2. Cut each block into `slot_minutes` pieces (10:00, 10:20, 10:40, ...). A leftover
+   piece shorter than one slot is dropped.
+3. Remove slots that already have a booking which is not cancelled.
+4. Remove slots that have already started, in Nepal time.
+
+### How booking stays safe
+
+- Booking runs inside `transaction.atomic()`: check the slot is real and free, then
+  insert.
+- A slot that is not one of the doctor's slots, or is in the past: **400**.
+- A slot that is already taken: **409**.
+- If two receptionists book the same slot at the same moment, both may pass the
+  check. The database's unique constraint on (doctor, date, start time) then lets
+  only one insert through; the other gets an `IntegrityError`, which becomes a
+  **409**. A test imitates this race.
+- A cancelled booking does not block its slot (the constraint ignores CANCELLED).
+
+### How the walk-in queue stays correct
+
+`add_walk_in()` locks the doctor's row (`select_for_update`) while it picks
+"highest number today + 1", so two receptionists can never both get number 3. A
+unique constraint on (doctor, date, queue number) is the backstop. A cancelled
+walk-in keeps its number, and numbers are not reused within the day.
+
+### Who may do what
+
+| Action                         | Admin | Staff | Doctor            | Pharmacist / Lab |
+| ------------------------------ | ----- | ----- | ----------------- | ---------------- |
+| Read schedules and slots       | yes   | yes   | yes               | no               |
+| Change a schedule              | any   | no    | own only          | no               |
+| List and view appointments     | all   | all   | own only          | no               |
+| Book or add a walk-in          | yes   | yes   | no                | no               |
+| Cancel or complete             | yes   | yes   | own only          | no               |
+
+### Decisions to know about
+
+- **Overlapping schedule blocks are refused** (e.g. 10:00-13:00 and 12:00-14:00 on
+  the same day). Without this check the same slot could appear twice.
+- **Cancelling needs a reason.**
+- **Appointments cannot be edited or deleted directly** (405). They only change
+  through `cancel/` and `complete/`, so the history stays honest.
+- **`NO_SHOW`** exists as a status but has no endpoint yet, as in the brief.
+- **Age entry** stores an estimated date of birth (today minus the age) and marks it
+  with `date_of_birth_is_estimated`, so the printed age is still right next year.
+- The appointment list supports `?date=`, `?date_from=`, `?date_to=`, `?doctor=`,
+  `?patient=`, `?status=`, `?visit_type=` and `?search=` (patient name or phone).
+- The consultation invoice on booking is added in phase 5.
+
+### Manual check through the front-end dev server
+
+Django and the Vite dev server were started together, and every call went to
+`http://localhost:5173/api/...` (the Vite proxy), exactly as the browser will:
+
+| Step                                           | Result                              |
+| ---------------------------------------------- | ----------------------------------- |
+| Vite serves the page                           | `<title>CliniSar</title>`           |
+| Login                                          | 200, access token in body, refresh token only in an `HttpOnly; SameSite=Strict; Path=/api/v1/auth/` cookie |
+| `auth/me/` with the Bearer token               | 200                                 |
+| `auth/refresh/` with only the cookie           | 200, new access token               |
+| Free slots for tomorrow                        | 200, 09:00, 09:20, ... |
+| Book 09:20                                     | 201                                 |
+| Book 09:20 again                               | **409**                             |
+| Two walk-ins                                   | 201, queue numbers 1 and 2          |
+| Cancel, then cancel again                      | 200, then 400                       |
+| New patient by age, no phone                   | 201, age 30, estimated birth date   |
+| Doctor: list / try to book                     | 200 (only own) / 403                |
+| Logout, then refresh with the old cookie       | 204, then 401                       |
+| Repeated wrong passwords                       | 401 until the 5-per-minute limit, then **429** |
+| `/api/docs/` and `/admin/login/`               | 200                                 |
+
+The local database `clinisar` keeps the made-up "Manual Check Clinic" (users
+`admin@check.local`, `staff@check.local`, `doctor@check.local`).
+
+### Files to read first
+
+1. `backend/apps/scheduling/services.py` - slots, booking, walk-ins, cancel, complete.
+2. `backend/apps/scheduling/models.py` - the three constraints on `Appointment`.
+3. `backend/apps/scheduling/views.py` - thin views; `create` picks booking or walk-in.
+4. `backend/apps/scheduling/serializers.py` - schedule overlap check, create input.
+5. `backend/apps/scheduling/permissions.py` - who may change a schedule.
+6. `backend/apps/scheduling/tests/test_slots.py` and `test_appointments_api.py`.
+7. `backend/apps/accounts/serializers.py` - `PatientSerializer` (age entry).

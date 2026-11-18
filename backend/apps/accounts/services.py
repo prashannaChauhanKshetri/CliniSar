@@ -1,5 +1,7 @@
 """Business rules for sessions (login, refresh, logout) and for doctor accounts."""
 
+import datetime
+
 from django.contrib.auth import authenticate
 from django.db import transaction
 from rest_framework.exceptions import APIException, AuthenticationFailed
@@ -101,3 +103,16 @@ def deactivate_user(user: User) -> None:
     """Switch a login off. Users are never deleted, so their history stays intact."""
     user.is_active = False
     user.save(update_fields=["is_active", "updated_at"])
+
+
+def estimate_date_of_birth(age_years: int, today: datetime.date) -> datetime.date:
+    """Turn an age ("30 yrs") into a date of birth, so the age stays correct next year.
+
+    The patient register records age, not birthday, so we assume the birthday is
+    today's day and month. 29 February becomes 28 February in non-leap years.
+    """
+    year = today.year - age_years
+    try:
+        return today.replace(year=year)
+    except ValueError:  # 29 Feb in a year without it
+        return today.replace(year=year, day=28)

@@ -292,9 +292,9 @@ def test_patient_with_appointments_cannot_be_deleted(login_as) -> None:
 
 def test_patient_fields_are_validated(login_as) -> None:
     client = login_as(UserFactory(role=Role.STAFF))
-    response = client.post(PATIENTS, new_patient_data(blood_group="Z+", phone=""))
+    response = client.post(PATIENTS, new_patient_data(blood_group="Z+", first_name=""))
     assert response.status_code == 400
-    assert {"blood_group", "phone"} <= set(response.data)
+    assert {"blood_group", "first_name"} <= set(response.data)
 
 
 def test_patients_can_be_searched_by_name_or_phone(login_as) -> None:
@@ -308,3 +308,18 @@ def test_patients_can_be_searched_by_name_or_phone(login_as) -> None:
 
     assert [row["first_name"] for row in by_name] == ["Sita"]
     assert [row["first_name"] for row in by_phone] == ["Ram"]
+
+
+def test_doctor_letterhead_fields_are_saved(login_as, admin) -> None:
+    """Printed at the top of the doctor's prescriptions, as on the real pads."""
+    letterhead = {
+        "name_nepali": "डा. हरि राई",
+        "qualifications": "M.B.B.S., M.S.",
+        "designation": "Consultant ENT Surgeon",
+        "license_number": "1234",
+    }
+    response = login_as(admin).post(DOCTORS, new_doctor_data(**letterhead))
+
+    assert response.status_code == 201
+    for field, value in letterhead.items():
+        assert response.data[field] == value

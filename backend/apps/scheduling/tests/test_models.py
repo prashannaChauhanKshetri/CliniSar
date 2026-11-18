@@ -47,3 +47,22 @@ def test_cancelled_slot_can_be_booked_again() -> None:
         start_time=cancelled.start_time,
     )
     assert again.status == Appointment.Status.BOOKED
+
+
+@pytest.mark.django_db
+def test_walk_in_must_have_a_queue_number_and_no_time() -> None:
+    with pytest.raises(IntegrityError):
+        AppointmentFactory(walk_in=True, queue_number=None)
+
+
+@pytest.mark.django_db
+def test_scheduled_visit_must_have_a_time_and_no_queue_number() -> None:
+    with pytest.raises(IntegrityError):
+        AppointmentFactory(queue_number=3)
+
+
+@pytest.mark.django_db
+def test_queue_number_is_unique_per_doctor_and_day() -> None:
+    first = AppointmentFactory(walk_in=True)
+    with pytest.raises(IntegrityError):
+        AppointmentFactory(walk_in=True, clinic=first.clinic, doctor=first.doctor, date=first.date)

@@ -16,9 +16,15 @@ class Clinic(BaseModel):
         MM_58 = 58, "58 mm"
 
     name = models.CharField(max_length=200)
+    # Printed in the footer of prescriptions, as on the clinic's paper pads.
+    name_nepali = models.CharField(max_length=200, blank=True)
     slug = models.SlugField(unique=True)
     phone = models.CharField(max_length=20, blank=True)
     address = models.CharField(max_length=255, blank=True)
+    address_nepali = models.CharField(max_length=255, blank=True)
+    # Free text printed at the bottom of every prescription,
+    # e.g. "यो पर्चाको म्याद १५ दिन मात्र हुनेछ ।" (valid for 15 days only).
+    prescription_note = models.CharField(max_length=255, blank=True)
     pan_number = models.CharField(max_length=20, blank=True)
     # Paper width of the clinic's thermal receipt printer.
     receipt_width_mm = models.PositiveSmallIntegerField(

@@ -24,7 +24,7 @@ class DoctorScheduleFactory(factory.django.DjangoModelFactory):
 
 
 class AppointmentFactory(factory.django.DjangoModelFactory):
-    """A BOOKED appointment whose patient, doctor and booker share one clinic."""
+    """A BOOKED scheduled appointment whose patient, doctor and booker share one clinic."""
 
     class Meta:
         model = Appointment
@@ -35,5 +35,15 @@ class AppointmentFactory(factory.django.DjangoModelFactory):
     booked_by = factory.SubFactory(UserFactory, clinic=factory.SelfAttribute("..clinic"))
     # Each new appointment gets its own day, so two factory rows never clash on a slot.
     date = factory.Sequence(lambda n: datetime.date(2030, 1, 1) + datetime.timedelta(days=n))
+    visit_type = Appointment.VisitType.SCHEDULED
     start_time = datetime.time(10, 0)
     end_time = datetime.time(10, 20)
+
+    class Params:
+        # AppointmentFactory(walk_in=True) makes a walk-in: no time, queue number 1.
+        walk_in = factory.Trait(
+            visit_type=Appointment.VisitType.WALK_IN,
+            start_time=None,
+            end_time=None,
+            queue_number=1,
+        )

@@ -154,3 +154,18 @@ def test_departments_can_be_searched_by_name(login_as) -> None:
     response = login_as(admin).get(DEPARTMENTS, {"search": "card"})
 
     assert [row["name"] for row in response.data["results"]] == ["Cardiology"]
+
+
+def test_admin_sets_nepali_name_address_and_prescription_note(login_as) -> None:
+    admin = UserFactory(role=Role.CLINIC_ADMIN)
+    data = {
+        "name_nepali": "नमुना क्लिनिक",
+        "address_nepali": "नेपालगन्ज-१०",
+        "prescription_note": "यो पर्चाको म्याद १५ दिन मात्र हुनेछ ।",
+    }
+
+    response = login_as(admin).patch(CLINIC, data)
+
+    assert response.status_code == 200
+    for field, value in data.items():
+        assert response.data[field] == value
