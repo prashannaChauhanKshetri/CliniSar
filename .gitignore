@@ -21,3 +21,6 @@ frontend/dist/
 
 # Design reference images (not ours to publish)
 .reference/
+
+# Real clinic data used only as a reference. Contains patient information: never commit.
+olsakaClicinData/
