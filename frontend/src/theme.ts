@@ -29,6 +29,9 @@ export const BRAND = {
 /** Chart series colours, in the order the brief asks for. */
 export const CHART_COLORS = [BRAND.primary, BRAND.primaryLight, BRAND.slate, BRAND.grey]
 
+/** The same chart colours as Mantine colour names (step 5 of primary is primary-light). */
+export const CHART_SERIES = ['primary.6', 'primary.5', 'slate.6', 'grey.6']
+
 // step 0 = primary-soft, step 5 = primary-light, step 6 = primary, step 7 = primary-dark
 const primary: MantineColorsTuple = [
   BRAND.primarySoft,

@@ -131,7 +131,7 @@ locked. There are no refunds.
 | 7   | Lab, documents, audit log                            | Done   |
 | 8   | Dashboard summary, demo data command                 | Done   |
 | 9   | Front-end foundation                                 | Done   |
-| 10  | Front-end pages, print pages, dashboard              |        |
+| 10  | Front-end pages, print pages, dashboard              | Done   |
 | 11  | Production Docker, CI/CD, deployment guide, README   |        |
 
 ## Not in this project

@@ -15,7 +15,7 @@ function ChangeText({ change, comparedTo }: { change: number | null; comparedTo:
   if (change === null) {
     return (
       <Text size="xs" c="dimmed">
-        No earlier data {comparedTo}
+        No earlier figures to compare
       </Text>
     )
   }
@@ -46,7 +46,13 @@ export function StatCard({
           <Text size="sm" c="dimmed">
             {label}
           </Text>
-          <Text fz={28} fw={700} lh={1.1} className="tabular-numbers">
+          <Text
+            fz={String(value).length > 9 ? 22 : 28} // long amounts like "Rs. 4,466.00" stay on one line
+            fw={700}
+            lh={1.1}
+            className="tabular-numbers"
+            style={{ whiteSpace: 'nowrap' }}
+          >
             {value}
           </Text>
           {changePercent !== undefined && (

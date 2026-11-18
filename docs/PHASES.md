@@ -931,3 +931,89 @@ support only React 18 or bundle a different calendar table. Full table in
 5. `frontend/src/lib/date.ts` and `frontend/src/lib/money.ts`.
 6. `frontend/src/components/DataTable.tsx` and `BsDatePicker.tsx`.
 7. `docs/FRONTEND.md` and `docs/BACKEND.md`.
+
+## Phase 10 - The screens, print pages and dashboard
+
+Built in four commits (10a to 10d), each checked in a real browser before committing.
+
+### What was built
+
+- **10a Administration and patients**: departments, staff, doctors (with their weekly
+  working hours), clinic settings (details, Nepali texts, VAT, the lab's own bill book,
+  receipt width), my profile (details and password), the patient register with search,
+  registration by age or date of birth, and the patient record with tabs (visits,
+  prescriptions, lab, bills, documents; each tab only for roles that may open it).
+- **10b Daily work**: appointments by day (walk-in queue and booked slots, complete,
+  cancel with reason), new appointment (patient search or quick registration, doctor,
+  walk-in or a free slot, and a summary showing the bill that will be created),
+  prescriptions (write, view, dispense), medicines and batches (purchase, adjust,
+  history), expiry (write-off), lab tests (report-row editor), lab orders (collect,
+  enter results row by row, complete, cancel), bills (take payment with an optional
+  discount, cancel, print), and documents (upload, delete).
+- **10c Print pages**: A4 bill, thermal receipt, A4 prescription and A4 lab report, in
+  the layout of the clinic's paper forms (see `docs/FRONTEND.md`, section 11).
+- **10d Dashboard**: the reference layout: four stat cards with the change against
+  the previous period, appointments by status (donut) beside appointments per
+  department (bars), recent doctors and new patients with status badges and edit /
+  delete icons. A "Last 7 days / Last 30 days" switch. The cards adapt to the role.
+
+### Small back-end additions for the screens
+
+- Lists accept `?page_size=` (up to 100), for dropdowns such as "choose a doctor".
+- `auth/me/` includes `doctor_profile_id`, so a doctor's "My schedule" knows its id.
+- Bills can be filtered by `appointment`, `prescription` or `lab_order`, so a
+  dispensed prescription or finished lab order links straight to its bill.
+- `seed_demo` gives the demo doctors Nepali names for the prescription letterhead.
+
+### Decisions to know about
+
+- **Pages load on first use** (`React.lazy`); chart code travels only with the
+  dashboard, so signing in downloads no chart libraries.
+- **Thermal receipt size**: `size: 80mm auto` is ignored by browsers (a PDF test showed
+  Letter paper), so the receipt is measured and printed at its exact height.
+- **The bill screen and both bill printouts share one set of total lines**
+  (`totalLines()`), so screen and paper can never disagree.
+- **Delete on the dashboard's "New patients"** only succeeds for a patient without
+  history; otherwise the server refuses (409) and the message explains why.
+- **Badges never truncate**, and long amounts on the stat cards use a smaller size so
+  they stay on one line.
+
+### Checks
+
+- 109 front-end tests, including the bill total rules (VAT lines only when the bill's
+  rate is above 0, discount only when given), the Rs./Ps. split, the page rules for A4,
+  80mm and 58mm, printing exactly once, the four printed documents, and the dashboard
+  cards for each role.
+- A full clinic day in headless Chrome against the real back end:
+  1. front desk adds a walk-in (queue number), books a free slot, cancels a visit (an
+     empty reason is refused; the unpaid bill is cancelled too);
+  2. the doctor writes a prescription and orders a lab test from the visit;
+  3. the pharmacist dispenses (a pharmacy bill of Rs. 18.00 + VAT 13% = Rs. 20.34 is
+     created) and takes payment with a Rs. 2 discount (server recalculates: VAT 2.08,
+     total Rs. 18.08);
+  4. the lab technician collects the sample, is stopped when a result row is empty,
+     then completes the results;
+  5. front desk takes the Rs. 500 consultation payment by card and can then print the
+     receipt.
+- The four print pages printed to PDF: three single A4 pages and an 80mm receipt;
+  each opens the print dialog once and has no sidebar or buttons; an unpaid bill's
+  receipt is refused.
+- The dashboard for admin, doctor and pharmacist, desktop and phone; no console errors.
+
+### Things the browser checks found and fixed
+
+- The lab results form kept a "Required" note after the row was filled in.
+- The receipt printed on Letter paper (see the decision above).
+- Signature lines on bills and reports were drawn twice.
+- Status badges were cut short ("Act…") in narrow tables.
+- Chart code was downloaded on the sign-in page.
+
+### Files to read first
+
+1. `frontend/src/features/appointments/NewAppointmentPage.tsx` - a typical page: data,
+   form, feedback, closure.
+2. `frontend/src/features/prescriptions/PrescriptionDetailPage.tsx` - dispensing.
+3. `frontend/src/features/lab/LabOrderDetailPage.tsx` - status steps and results.
+4. `frontend/src/features/billing/InvoiceDetailPage.tsx` and `src/lib/bills.ts`.
+5. `frontend/src/print/PrintLayout.tsx` and `src/print/InvoicePrint.tsx`.
+6. `frontend/src/features/dashboard/DashboardPage.tsx` and `cards.ts`.

@@ -42,6 +42,6 @@ describe('StatCard', () => {
         icon={Users}
       />,
     )
-    expect(await screen.findByText(/No earlier data/)).toBeInTheDocument()
+    expect(await screen.findByText('No earlier figures to compare')).toBeInTheDocument()
   })
 })

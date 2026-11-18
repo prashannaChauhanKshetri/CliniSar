@@ -35,7 +35,12 @@ const STATUS_COLORS: Record<string, string> = {
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
   const color = STATUS_COLORS[status] ?? 'grey'
   return (
-    <Badge color={color} variant="light" leftSection={<span aria-hidden="true">●</span>}>
+    <Badge
+      color={color}
+      variant="light"
+      leftSection={<span aria-hidden="true">●</span>}
+      style={{ minWidth: 'max-content' }} // never cut a status short ("Act…")
+    >
       {label ?? statusLabel(status)}
     </Badge>
   )

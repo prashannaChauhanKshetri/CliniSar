@@ -22,6 +22,8 @@ export default defineConfig({
       output: {
         // Libraries change rarely, our code often. Separate files let browsers keep the
         // libraries cached between releases. Higher priority wins when a file matches two.
+        // Chart libraries are left out on purpose: only the dashboard uses them, so they
+        // are split off with that page and never slow down the first load.
         codeSplitting: {
           groups: [
             {
@@ -29,13 +31,12 @@ export default defineConfig({
               test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/,
               priority: 4,
             },
-            { name: 'mantine', test: /node_modules[\\/]@mantine[\\/]/, priority: 3 },
+            { name: 'mantine', test: /node_modules[\\/]@mantine[\\/](?!charts)/, priority: 3 },
             {
-              name: 'charts',
-              test: /node_modules[\\/](recharts|d3-[a-z-]+|victory-vendor)[\\/]/,
-              priority: 3,
+              name: 'vendor',
+              test: /node_modules[\\/](?!(recharts|d3-[a-z-]+|victory-vendor|@mantine[\\/]charts)[\\/])/,
+              priority: 1,
             },
-            { name: 'vendor', test: /node_modules/, priority: 1 },
           ],
         },
       },

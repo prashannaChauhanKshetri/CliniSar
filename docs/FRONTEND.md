@@ -201,9 +201,12 @@ the default settings of each Mantine component. Pages never hard-code a colour.
 
 ## 9. Production qualities
 
-- **Build**: `tsc -b && vite build`. Our own code is ~21 KB; libraries are split into
+- **Build**: `tsc -b && vite build`. The first load is our shared code (~29 KB) plus
   `react`, `mantine` and `vendor` files that browsers keep cached between releases
-  (`vite.config.ts`). In phase 10 each page will also load only when first opened.
+  (`vite.config.ts`). **Every page loads only when first opened** (`React.lazy` in
+  `routes/router.tsx`), 1-10 KB each. The chart libraries are deliberately left out of
+  the shared files, so they travel with the dashboard alone and never slow down
+  sign-in or the other screens.
 - **Accessibility**: Mantine components handle focus and ARIA; we add labels to icon
   buttons, `role="alert"` to errors, `aria-current` to the active menu item and to
   today in the calendar, and keep visible focus outlines.
@@ -216,7 +219,51 @@ the default settings of each Mantine component. Pages never hard-code a colour.
   login page, the table states, the date picker, and the layout. A real-browser check
   (headless Chrome) covers sign-in, reload, roles, mobile drawer and sign-out.
 
-## 10. Folder map
+## 10. The screens (phase 10)
+
+Every screen follows the same pattern: a `PageHeader`, then a white card with filters
+on top (kept in the address bar by `useListState`, so a reload keeps your place) and a
+`DataTable`; "add/edit" happens in a `FormModal`; anything that cannot be undone goes
+through `ConfirmDialog` (or `CancelWithReason` when a reason is required); every
+action ends with a plain-words notification from `lib/notify.ts`.
+
+| Area | Screens | Notes |
+| ---- | ------- | ----- |
+| Administration | Departments, Staff, Doctors (with working hours), Settings, My profile | Settings say clearly that VAT changes apply to new bills only |
+| Patients | List with search, register (age **or** date of birth, phone optional), patient record with tabs | Tabs show only what the role may open |
+| Appointments | Day view (BS picker, previous/next day), new appointment | Walk-in or booked slot; the summary shows the bill that will be created; a slot taken meanwhile (409) refreshes the free slots |
+| Prescriptions | List (pharmacist starts on "Waiting"), detail, write (doctor) | Dispense explains exactly what happens; a 409 names the missing medicine |
+| Pharmacy | Medicines (Low stock badge), medicine detail (batches, purchase, adjust, history), Expiry | Expiry dates show "Expires soon" / "Expired"; one-click write-off |
+| Lab | Lab tests (report rows editor), lab orders, lab order detail | Results form with section headings, Normal/Abnormal per row, optional file |
+| Bills | List, detail with the same totals as the paper bill | Take payment (discount recalculated by the server), cancel with reason, print |
+| Documents | List, upload (type and 10 MB checked before sending), delete | |
+| Dashboard | Four cards, donut by status, bars by department, recent doctors, new patients | Cards adapt to the role (`features/dashboard/cards.ts`) |
+
+## 11. Printing (phase 10)
+
+Routes under `/print/...` show one document with no sidebar, top bar or buttons and
+open the print dialog once the data has loaded (`print/PrintLayout.tsx`).
+
+| Route | Paper | Looks like |
+| ----- | ----- | ---------- |
+| `/print/invoice/:id` | A4, 15mm margins | the clinic's bill book: PAN in boxes, S.N./Particular/Qty/Rate/Rs./Ps., totals, In Words, Issued by |
+| `/print/receipt/:id` | 80mm or 58mm roll (clinic setting) | one monospace column; only for PAID bills |
+| `/print/prescription/:id` | A4 | doctor's letterhead (Nepali and English, NMC No.), Rx table, clinic name/address/validity note in Nepali at the bottom |
+| `/print/lab-order/:id` | A4 | patient box (consultant, Lab No., collection and reporting dates), one heading per category, sections, abnormal values marked *, `>>END OF REPORT<<`, signature lines |
+
+- Totals (Subtotal, Discount if any, Taxable amount and "VAT x%" only when the bill's
+  own rate is above 0, Total) come from **one function**, `totalLines()` in
+  `lib/bills.ts`, used by the bill screen and both bill printouts.
+- **Receipt paper size**: the brief's `size: 80mm auto` is not accepted by browsers
+  (a PDF test showed Chrome falling back to Letter paper). The receipt is measured just
+  before printing and given its exact height, e.g. `size: 80mm 90mm`, so it prints as
+  one continuous strip.
+- Printed dates are numeric BS (`2083/08/02`) with the AD date beside them; black text
+  on white, no theme colours.
+- Checked by printing all four to PDF in headless Chrome: three single A4 pages and an
+  80mm receipt.
+
+## 12. Folder map
 
 ```
 src/
@@ -227,13 +274,14 @@ src/
   routes/                navigation.ts (screens + roles), router.tsx, guards
   components/            shared components (DataTable, StatCard, BsDatePicker, ...)
   components/layout/     AppLayout, Sidebar, TopBar, AlertsMenu, UserMenu
-  pages/                 one file per screen (most arrive in phase 10)
-  print/                 the four print pages (phase 10)
+  features/<area>/       the screens of each area (patients, appointments, billing, ...)
+  pages/                 login, not found, forbidden
+  print/                 PrintLayout, PrintHeader and the four printouts
   lib/                   date.ts, money.ts, notify.ts, labels.ts
   test/                  setup and the render helper
 ```
 
-## 11. Where to start reading
+## 13. Where to start reading
 
 1. `src/api/client.ts` - the session rules in 80 lines.
 2. `src/features/auth/AuthProvider.tsx` - restoring and ending a session.
@@ -241,3 +289,5 @@ src/
 4. `src/theme.ts` - the whole look.
 5. `src/lib/date.ts` - Bikram Sambat.
 6. `src/components/DataTable.tsx` - how every list behaves.
+7. `src/features/appointments/NewAppointmentPage.tsx` - a typical multi-step form.
+8. `src/lib/bills.ts` and `src/print/InvoicePrint.tsx` - one set of totals for screen and paper.

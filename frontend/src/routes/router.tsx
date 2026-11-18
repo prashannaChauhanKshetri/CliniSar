@@ -11,7 +11,6 @@ import { AppLayout } from '../components/layout/AppLayout'
 import { PageLoader } from '../components/PageLoader'
 import { LoginPage } from '../pages/LoginPage'
 import { NotFoundPage } from '../pages/NotFoundPage'
-import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { RequireAuth } from './RequireAuth'
 import { RequireRole } from './RequireRole'
 
@@ -23,8 +22,8 @@ function page<K extends string>(
   return lazy(async () => ({ default: (await load())[name] }))
 }
 
-const SCREENS: Record<string, LazyExoticComponent<ComponentType> | null> = {
-  '/dashboard': null,
+const SCREENS: Record<string, LazyExoticComponent<ComponentType>> = {
+  '/dashboard': page(() => import('../features/dashboard/DashboardPage'), 'DashboardPage'),
   '/doctors': page(() => import('../features/admin/DoctorsPage'), 'DoctorsPage'),
   '/staff': page(() => import('../features/admin/StaffPage'), 'StaffPage'),
   '/departments': page(() => import('../features/admin/DepartmentsPage'), 'DepartmentsPage'),
@@ -76,12 +75,14 @@ const PRINT_SCREENS: [string, LazyExoticComponent<ComponentType>][] = [
   ['/print/lab-order/:id', page(() => import('../print/LabReportPrint'), 'LabReportPrint')],
 ]
 
-function screenRoute(path: string, Page: LazyExoticComponent<ComponentType> | null): RouteObject {
+function screenRoute(path: string, Page: LazyExoticComponent<ComponentType>): RouteObject {
   return {
     path,
     element: (
       <RequireRole>
-        <Suspense fallback={<PageLoader />}>{Page ? <Page /> : <PlaceholderPage />}</Suspense>
+        <Suspense fallback={<PageLoader />}>
+          <Page />
+        </Suspense>
       </RequireRole>
     ),
   }
