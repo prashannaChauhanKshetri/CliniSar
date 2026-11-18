@@ -1,0 +1,221 @@
+/*
+ * Print pages: black text on white, no theme colours, no screen chrome.
+ * On screen the page is shown at its paper width so it can be checked before printing.
+ */
+.screen {
+  background: #e5e7eb;
+  min-height: 100vh;
+  padding: 24px 0;
+}
+
+.paper {
+  background: #fff;
+  color: #000;
+  font-family: 'Inter Variable', Inter, Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 0 auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.a4 {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm;
+  box-sizing: border-box;
+}
+
+/* Thermal paper: 80mm roll prints 72mm, 58mm roll prints 48mm. */
+.thermal {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11.5px;
+  line-height: 1.35;
+  padding: 4mm;
+  box-sizing: content-box;
+}
+.w80 {
+  width: 72mm;
+}
+.w58 {
+  width: 48mm;
+}
+
+@media print {
+  .screen {
+    background: none;
+    padding: 0;
+  }
+  .paper {
+    box-shadow: none;
+    margin: 0;
+  }
+  /* @page already adds the A4 margin. */
+  .a4 {
+    width: auto;
+    min-height: 0;
+    padding: 0;
+  }
+  .thermal {
+    padding: 0;
+  }
+}
+
+/* ---------- shared pieces ---------- */
+.center {
+  text-align: center;
+}
+.right {
+  text-align: right;
+}
+.muted {
+  font-size: 10px;
+}
+.title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+  margin: 10px 0;
+}
+.issuer {
+  font-size: 20px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.rule {
+  border: 0;
+  border-top: 2px solid #000;
+  margin: 8px 0;
+}
+.thinRule {
+  border: 0;
+  border-top: 1px dashed #000;
+  margin: 6px 0;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.panBoxes {
+  display: inline-flex;
+  margin-left: 6px;
+}
+.panBoxes span {
+  border: 1px solid #000;
+  min-width: 14px;
+  padding: 0 2px;
+  text-align: center;
+  margin-left: -1px;
+  font-weight: 600;
+}
+.fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 24px;
+  margin: 8px 0;
+}
+.fields b {
+  font-weight: 600;
+}
+
+table.lines {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+}
+table.lines th,
+table.lines td {
+  border: 1px solid #000;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+table.lines th {
+  font-weight: 600;
+  text-align: left;
+}
+table.lines .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+table.lines .totalLabel {
+  text-align: right;
+  font-weight: 600;
+  border-left: 1px solid #000;
+}
+
+.words {
+  border: 1px solid #000;
+  border-top: 0;
+  padding: 4px 6px;
+}
+.signatures {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 48px;
+}
+.signatures > div {
+  border-top: 1px dotted #000;
+  padding-top: 4px;
+  min-width: 150px;
+  text-align: center;
+}
+.end {
+  text-align: center;
+  font-weight: 600;
+  margin-top: 16px;
+  letter-spacing: 0.05em;
+}
+
+/* Lab report result table: no inner vertical lines, like the clinic's Word templates. */
+table.results {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0 12px;
+}
+table.results th {
+  text-align: left;
+  border-top: 1px solid #000;
+  border-bottom: 1px solid #000;
+  padding: 4px 6px;
+}
+table.results td {
+  padding: 3px 6px;
+}
+table.results .section td {
+  font-weight: 700;
+  padding-top: 6px;
+}
+table.results .indent {
+  padding-left: 18px;
+}
+table.results .abnormal {
+  font-weight: 700;
+}
+
+/* Prescription letterhead: Nepali on the left, English on the right. */
+.letterhead {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 8px;
+}
+.doctorName {
+  font-size: 18px;
+  font-weight: 700;
+}
+.rx {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: Georgia, 'Times New Roman', serif;
+  margin: 12px 0 4px;
+}
+.footer {
+  text-align: center;
+  margin-top: 32px;
+  border-top: 2px solid #000;
+  padding-top: 6px;
+}

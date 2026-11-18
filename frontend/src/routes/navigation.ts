@@ -187,6 +187,35 @@ export const OTHER_SCREENS: NavItem[] = [
     roles: CLINIC_ROLES,
     description: 'Your name, phone and password.',
   },
+  // Print pages: same roles as the record they print.
+  {
+    label: 'Print bill',
+    path: '/print/invoice',
+    icon: Banknote,
+    roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST', 'LAB_TECHNICIAN'],
+    description: 'A4 bill.',
+  },
+  {
+    label: 'Print receipt',
+    path: '/print/receipt',
+    icon: Banknote,
+    roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST', 'LAB_TECHNICIAN'],
+    description: 'Thermal receipt.',
+  },
+  {
+    label: 'Print prescription',
+    path: '/print/prescription',
+    icon: ClipboardList,
+    roles: ['CLINIC_ADMIN', 'STAFF', 'DOCTOR', 'PHARMACIST'],
+    description: 'A4 prescription.',
+  },
+  {
+    label: 'Print lab report',
+    path: '/print/lab-order',
+    icon: TestTubes,
+    roles: ['CLINIC_ADMIN', 'STAFF', 'DOCTOR', 'LAB_TECHNICIAN'],
+    description: 'A4 lab report.',
+  },
   {
     label: 'New appointment',
     path: '/appointments/new',

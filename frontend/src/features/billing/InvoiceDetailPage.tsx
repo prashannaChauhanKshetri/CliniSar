@@ -23,7 +23,7 @@ import { FormModal } from '../../components/FormModal'
 import { Money } from '../../components/Money'
 import { PageHeader } from '../../components/PageHeader'
 import { StatusBadge } from '../../components/StatusBadge'
-import { billNumber, SOURCE_LABELS, vatLabel } from '../../lib/bills'
+import { billNumber, SOURCE_LABELS, totalLines } from '../../lib/bills'
 import { formatBS, formatNepalTime, nepalDateOf } from '../../lib/date'
 import { formatRs } from '../../lib/money'
 import { notifyError, notifySuccess } from '../../lib/notify'
@@ -169,27 +169,25 @@ export function InvoiceDetailPage() {
   )
 }
 
-/** Subtotal, discount (if any), taxable amount and VAT (only when the bill's rate > 0), total. */
+/** The bill's total lines, the same ones the printouts use (lib/bills.ts). */
 export function Totals({ bill }: { bill: Invoice }) {
-  const hasDiscount = Number(bill.discount) > 0
-  const hasVat = Number(bill.vat_rate) > 0
-  const taxable = (Number(bill.subtotal) - Number(bill.discount)).toFixed(2) // display only; the server stored the result
-  const row = (label: string, amount: string, strong = false) => (
-    <Group justify="space-between" w={320} maw="100%">
-      <Text size="sm" fw={strong ? 700 : 400} c={strong ? undefined : 'dimmed'}>
-        {label}
-      </Text>
-      <Money amount={amount} fw={strong ? 700 : 500} size={strong ? 'md' : 'sm'} />
-    </Group>
-  )
   return (
     <Stack gap={6} align="flex-end" mt="md">
-      {row('Subtotal', bill.subtotal)}
-      {hasDiscount && row('Discount', `-${bill.discount}`)}
-      {hasVat && row('Taxable amount', taxable)}
-      {hasVat && row(vatLabel(bill.vat_rate), bill.vat_amount)}
-      <Divider w={320} maw="100%" />
-      {row('Total', bill.total, true)}
+      {totalLines(bill).map((line) => (
+        <Stack key={line.label} gap={6} w={320} maw="100%">
+          {line.strong && <Divider />}
+          <Group justify="space-between">
+            <Text size="sm" fw={line.strong ? 700 : 400} c={line.strong ? undefined : 'dimmed'}>
+              {line.label}
+            </Text>
+            <Money
+              amount={line.amount}
+              fw={line.strong ? 700 : 500}
+              size={line.strong ? 'md' : 'sm'}
+            />
+          </Group>
+        </Stack>
+      ))}
     </Stack>
   )
 }

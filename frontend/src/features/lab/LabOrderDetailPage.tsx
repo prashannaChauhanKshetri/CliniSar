@@ -33,6 +33,7 @@ import { ErrorState } from '../../components/ErrorState'
 import { PageHeader } from '../../components/PageHeader'
 import { StatusBadge } from '../../components/StatusBadge'
 import { formatNepalTime } from '../../lib/date'
+import { withSectionHeadings } from '../../lib/labels'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { ageSex } from '../../lib/people'
 import { CancelWithReason } from '../appointments/CancelWithReason'
@@ -167,18 +168,6 @@ export function LabOrderDetailPage() {
       />
     </>
   )
-}
-
-/** Rows grouped by section, so sub-headings appear once, as on the printed report. */
-function withSectionHeadings<T extends { section: string }>(
-  rows: T[],
-): { heading: string | null; row: T }[] {
-  let current = ''
-  return rows.map((row) => {
-    const heading = row.section && row.section !== current ? row.section : null
-    current = row.section
-    return { heading, row }
-  })
 }
 
 function ResultsCard({ item }: { item: LabOrderItem }) {

@@ -66,6 +66,16 @@ const SCREENS: Record<string, LazyExoticComponent<ComponentType> | null> = {
   '/documents': page(() => import('../features/documents/DocumentsPage'), 'DocumentsPage'),
 }
 
+const PRINT_SCREENS: [string, LazyExoticComponent<ComponentType>][] = [
+  ['/print/invoice/:id', page(() => import('../print/InvoicePrint'), 'InvoicePrint')],
+  ['/print/receipt/:id', page(() => import('../print/ReceiptPrint'), 'ReceiptPrint')],
+  [
+    '/print/prescription/:id',
+    page(() => import('../print/PrescriptionPrint'), 'PrescriptionPrint'),
+  ],
+  ['/print/lab-order/:id', page(() => import('../print/LabReportPrint'), 'LabReportPrint')],
+]
+
 function screenRoute(path: string, Page: LazyExoticComponent<ComponentType> | null): RouteObject {
   return {
     path,
@@ -82,6 +92,17 @@ export const routes: RouteObject[] = [
   {
     element: <RequireAuth />,
     children: [
+      // Printouts: signed in and allowed, but without the app frame.
+      ...PRINT_SCREENS.map(([path, Page]) => ({
+        path,
+        element: (
+          <RequireRole>
+            <Suspense fallback={null}>
+              <Page />
+            </Suspense>
+          </RequireRole>
+        ),
+      })),
       {
         element: <AppLayout />,
         children: [

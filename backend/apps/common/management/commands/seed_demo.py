@@ -73,6 +73,9 @@ DOCTORS = [
     ("Bikash", "Thapa", "ENT", "ENT Surgeon", "Consultant ENT Surgeon", "700.00"),
 ]
 
+# Printed on the prescription letterhead.
+NEPALI_NAMES = {"Anil": "डा. अनिल शर्मा", "Sunita": "डा. सुनिता कार्की", "Bikash": "डा. विकास थापा"}
+
 PATIENTS = [
     # first, last, age, gender, address, phone ("" = none, as often in the paper register)
     ("Ramesh", "Adhikari", 45, "MALE", "Nepalgunj-10, Banke", "9800000001"),
@@ -329,6 +332,7 @@ def make_doctor(clinic, first, last, department, specialization, designation, fe
         specialization=specialization,
         designation=designation,
         qualifications="M.B.B.S., M.D.",
+        name_nepali=NEPALI_NAMES.get(first, ""),
         license_number=str(random.randint(10000, 19999)),
         consultation_fee=Decimal(fee),
     )
