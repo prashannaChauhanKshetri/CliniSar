@@ -11,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.clinics.models import Clinic
 
-from .models import DoctorProfile, User
+from .models import DoctorProfile, PatientProfile, User
 
 
 class SessionError(APIException):
@@ -116,3 +116,10 @@ def estimate_date_of_birth(age_years: int, today: datetime.date) -> datetime.dat
         return today.replace(year=year)
     except ValueError:  # 29 Feb in a year without it
         return today.replace(year=year, day=28)
+
+
+def mark_patient_checked(patient: PatientProfile) -> PatientProfile:
+    """Clear the "needs checking" flag once the front desk has confirmed the details."""
+    patient.needs_review = False
+    patient.save(update_fields=["needs_review", "updated_at"])
+    return patient

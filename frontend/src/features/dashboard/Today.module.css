@@ -1,0 +1,33 @@
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 24px;
+  border-right: 1px solid var(--mantine-color-default-border);
+}
+
+.figure:last-child {
+  border-right: 0;
+}
+
+.figure:not(:disabled):hover {
+  background: var(--clinisar-page);
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--mantine-radius-md);
+  color: inherit;
+}
+
+.action:hover {
+  background: var(--clinisar-page);
+}
+
+.next {
+  border-left: 4px solid var(--mantine-color-primary-6);
+}

@@ -5,6 +5,7 @@ import { alertsFrom } from './alerts'
 const summary = {
   stock: { low_stock_medicines: 2, expiring_soon_batches: 1, expired_batches: 0 },
   pending_lab_orders: 3,
+  patients_to_check: 2,
   unpaid_invoices: 5,
 } as DashboardSummary
 
@@ -15,7 +16,19 @@ describe('alertsFrom', () => {
       '1 batch expires within 90 days',
       '5 bills are unpaid',
     ])
-    expect(alertsFrom(summary, 'DOCTOR').map((a) => a.text)).toEqual(['3 lab orders are waiting'])
+    // The server sends patients_to_check to admin and front desk only.
+    expect(
+      alertsFrom({ ...summary, patients_to_check: null }, 'DOCTOR').map((a) => a.text),
+    ).toEqual(['3 lab orders are waiting'])
+  })
+
+  it('tells the front desk about patients registered at the lab', () => {
+    expect(alertsFrom(summary, 'STAFF').map((a) => a.text)).toContain(
+      '2 patients registered at the lab need checking',
+    )
+    expect(alertsFrom({ ...summary, patients_to_check: 1 }, 'STAFF').map((a) => a.path)).toContain(
+      '/patients?needs_review=true',
+    )
   })
 
   it('is empty before the numbers arrive', () => {

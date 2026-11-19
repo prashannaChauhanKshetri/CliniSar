@@ -122,12 +122,21 @@ export interface Patient {
   blood_group: string
   address: string
   emergency_contact: string
+  /** Registered at the lab counter and not yet checked by the front desk. */
+  needs_review: boolean
+  registered_by_name: string | null
   created_at: string
 }
-export type PatientInput = Partial<Omit<Patient, 'id' | 'full_name' | 'age' | 'created_at'>> & {
+export type PatientInput = Partial<
+  Omit<Patient, 'id' | 'full_name' | 'age' | 'created_at' | 'needs_review' | 'registered_by_name'>
+> & {
   age_years?: number
 }
-export const patientsApi = resource<Patient, PatientInput>('/patients/')
+export const patientsApi = {
+  ...resource<Patient, PatientInput>('/patients/'),
+  /** Front desk confirms the details of a patient registered at the lab. */
+  markChecked: (id: string) => post<Patient>(`/patients/${id}/mark-checked/`),
+}
 
 export const profileApi = {
   update: (body: { first_name?: string; last_name?: string; phone?: string }) =>

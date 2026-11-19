@@ -21,7 +21,7 @@ class SummaryView(APIView):
     permission_classes = [IsAuthenticated]
 
     @extend_schema(
-        parameters=[OpenApiParameter("range", str, enum=["week", "month"], required=False)],
+        parameters=[OpenApiParameter("range", str, enum=list(services.RANGE_DAYS), required=False)],
         responses=OpenApiTypes.OBJECT,
     )
     def get(self, request) -> Response:

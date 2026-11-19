@@ -3,8 +3,9 @@
  * for a patient who came on their own (the report then says "Consultant: Self").
  * One order gets one Lab No. and one bill with a line per test.
  */
-import { MultiSelect, Text } from '@mantine/core'
+import { Button, Group, MultiSelect, Text } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { getErrorMessage } from '../../api/errors'
@@ -14,6 +15,7 @@ import { RemoteSelect } from '../../components/RemoteSelect'
 import { formatBS } from '../../lib/date'
 import { formatRs } from '../../lib/money'
 import { notifySuccess } from '../../lib/notify'
+import { PatientForm } from '../patients/PatientForm'
 
 export function OrderLabTestsModal({
   appointment,
@@ -24,7 +26,8 @@ export function OrderLabTestsModal({
 }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [patient, setPatient] = useState<string | null>(null)
+  const [patient, setPatient] = useState<{ id: string; name: string } | null>(null)
+  const [registering, setRegistering] = useState(false)
   const [tests, setTests] = useState<string[]>([])
   const [problem, setProblem] = useState<string | null>(null)
   const catalogue = useQuery({
@@ -35,7 +38,7 @@ export function OrderLabTestsModal({
   const order = useMutation({
     mutationFn: () =>
       labOrdersApi.create(
-        appointment ? { appointment: appointment.id, tests } : { patient: patient!, tests },
+        appointment ? { appointment: appointment.id, tests } : { patient: patient!.id, tests },
       ),
     onSuccess: (created) => {
       notifySuccess(
@@ -74,19 +77,40 @@ export function OrderLabTestsModal({
           From the visit on {formatBS(appointment.date)}.
         </Text>
       ) : (
-        <RemoteSelect
-          label="Patient"
-          required
-          placeholder="Type a name or phone"
-          queryKey="patients"
-          fetchOptions={async (search) =>
-            (await patientsApi.list({ search, page_size: 20 })).results.map((p) => ({
-              value: p.id,
-              label: `${p.full_name}${p.phone ? ` · ${p.phone}` : ''}`,
-            }))
-          }
-          value={patient}
-          onChange={(value) => setPatient(value)}
+        <Group align="flex-end" gap="sm" wrap="nowrap">
+          <RemoteSelect
+            label="Patient"
+            required
+            placeholder="Type a name or phone"
+            queryKey="patients"
+            fetchOptions={async (search) =>
+              (await patientsApi.list({ search, page_size: 20 })).results.map((p) => ({
+                value: p.id,
+                label: `${p.full_name}${p.phone ? ` · ${p.phone}` : ''}`,
+              }))
+            }
+            value={patient?.id ?? null}
+            selectedLabel={patient?.name}
+            onChange={(value, option) =>
+              setPatient(value && option ? { id: value, name: option.label } : null)
+            }
+            flex={1}
+          />
+          {/* Not found? Register them here; the front desk is asked to check the details. */}
+          <Button
+            variant="light"
+            leftSection={<UserPlus size={16} />}
+            onClick={() => setRegistering(true)}
+          >
+            New patient
+          </Button>
+        </Group>
+      )}
+      {registering && (
+        <PatientForm
+          patient={null}
+          onClose={() => setRegistering(false)}
+          onSaved={(saved) => setPatient({ id: saved.id, name: saved.full_name })}
         />
       )}
       <MultiSelect

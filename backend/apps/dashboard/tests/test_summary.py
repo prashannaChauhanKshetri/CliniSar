@@ -313,3 +313,23 @@ def test_summary_uses_a_small_fixed_number_of_queries(
     client = login_as(admin)
     with django_assert_max_num_queries(25):  # does not grow with the number of rows
         client.get(SUMMARY)
+
+
+@pytest.mark.django_db
+def test_today_range_compares_with_yesterday(login_as, admin) -> None:
+    AppointmentFactory(clinic=admin.clinic, date=days_ago(0))
+    AppointmentFactory(clinic=admin.clinic, date=days_ago(1))
+    AppointmentFactory(clinic=admin.clinic, date=days_ago(1))  # another doctor
+    data = get_summary(login_as, admin, "today")
+    assert data["appointments"] == {"value": 1, "previous": 2, "change_percent": -50.0}
+    assert data["start"] == data["end"]
+
+
+@pytest.mark.django_db
+def test_front_desk_sees_how_many_lab_registrations_need_checking(login_as, admin) -> None:
+    PatientProfileFactory(clinic=admin.clinic, needs_review=True)
+    PatientProfileFactory(clinic=admin.clinic)
+    PatientProfileFactory(needs_review=True)  # another clinic
+    assert get_summary(login_as, admin)["patients_to_check"] == 1
+    lab_tech = UserFactory(clinic=admin.clinic, role=Role.LAB_TECHNICIAN)
+    assert get_summary(login_as, lab_tech)["patients_to_check"] is None

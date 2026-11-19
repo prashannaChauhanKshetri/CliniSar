@@ -6,11 +6,18 @@ The rules live in services.py; these views stay thin.
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
+from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import IsAdminOrStaff, IsClinicAdmin, IsDoctor, ReadOnly
+from apps.common.permissions import (
+    IsAdminOrStaff,
+    IsClinicAdmin,
+    IsDoctor,
+    IsLabTechnician,
+    ReadOnly,
+)
 from apps.common.views import TenantViewSet
 
 from . import services
@@ -148,12 +155,40 @@ class DoctorViewSet(TenantViewSet):
 
 
 class PatientViewSet(TenantViewSet):
-    """CRUD patients/: admin and staff manage patients; a doctor may read their own."""
+    """CRUD patients/.
 
-    queryset = PatientProfile.objects.all()
+    Admin and staff manage patients. A doctor reads their own patients. A lab technician
+    may search and register patients (for people who come straight to the lab); those
+    are flagged needs_review until the front desk checks them (mark-checked/).
+    """
+
+    queryset = PatientProfile.objects.select_related("registered_by")
     serializer_class = PatientSerializer
-    permission_classes = [IsAdminOrStaff | (IsDoctor & ReadOnly)]
+    filterset_fields = ["needs_review"]
     search_fields = ["first_name", "last_name", "phone"]
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            return [(IsAdminOrStaff | IsLabTechnician | IsDoctor)()]
+        if self.action == "create":
+            return [(IsAdminOrStaff | IsLabTechnician)()]
+        return [IsAdminOrStaff()]  # edit, delete, mark-checked
+
+    def perform_create(self, serializer) -> None:
+        """Record who registered the patient; the lab's registrations need checking."""
+        user = self.request.user
+        serializer.save(
+            clinic=user.clinic,
+            registered_by=user,
+            needs_review=user.role == User.Role.LAB_TECHNICIAN,
+        )
+
+    @extend_schema(request=None, responses=PatientSerializer)
+    @action(detail=True, methods=["post"], url_path="mark-checked")
+    def mark_checked(self, request, pk=None) -> Response:
+        """The front desk confirms the details of a patient registered at the lab."""
+        patient = services.mark_patient_checked(self.get_object())
+        return Response(PatientSerializer(patient, context=self.get_serializer_context()).data)
 
     def get_queryset(self):
         """Row-level rule: a doctor only sees patients who have an appointment with them."""

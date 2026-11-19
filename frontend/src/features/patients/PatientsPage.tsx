@@ -1,5 +1,5 @@
 /** The patient register: search, register new patients, open a patient's record. */
-import { Button, Card, Group, Text, TextInput } from '@mantine/core'
+import { Button, Card, Group, SegmentedControl, Text, TextInput } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Search } from 'lucide-react'
 import { useState } from 'react'
@@ -8,6 +8,7 @@ import { patientsApi } from '../../api/resources'
 import { DataTable } from '../../components/DataTable'
 import { DateText } from '../../components/DateText'
 import { PageHeader } from '../../components/PageHeader'
+import { StatusBadge } from '../../components/StatusBadge'
 import { nepalDateOf } from '../../lib/date'
 import { ageSex } from '../../lib/people'
 import { useListState } from '../../lib/useListState'
@@ -20,7 +21,11 @@ export function PatientsPage() {
   const list = useListState()
   const navigate = useNavigate()
   const [adding, setAdding] = useState(false)
-  const filters = { page: list.page, search: list.get('search') }
+  const filters = {
+    page: list.page,
+    search: list.get('search'),
+    needs_review: list.get('needs_review'),
+  }
   const query = useQuery({
     queryKey: ['patients', filters],
     queryFn: () => patientsApi.list(filters),
@@ -54,6 +59,18 @@ export function PatientsPage() {
             aria-label="Search patients"
             w={320}
           />
+          {canRegister && (
+            <SegmentedControl
+              value={filters.needs_review === 'true' ? 'check' : 'all'}
+              onChange={(value) =>
+                list.setFilter('needs_review', value === 'check' ? 'true' : null)
+              }
+              data={[
+                { value: 'all', label: 'All patients' },
+                { value: 'check', label: 'Registered at lab, to check' },
+              ]}
+            />
+          )}
         </Group>
         <DataTable
           caption="Patients"
@@ -78,9 +95,12 @@ export function PatientsPage() {
               header: 'Name',
               render: (row) => (
                 <div>
-                  <Text size="sm" fw={500}>
-                    {row.full_name}
-                  </Text>
+                  <Group gap="xs" wrap="nowrap">
+                    <Text size="sm" fw={500}>
+                      {row.full_name}
+                    </Text>
+                    {row.needs_review && <StatusBadge status="PENDING" label="Check details" />}
+                  </Group>
                   <Text size="xs" c="dimmed">
                     {ageSex(row.age, row.gender)}
                   </Text>

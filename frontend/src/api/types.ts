@@ -45,8 +45,10 @@ export interface Comparison<T extends number | string = number> {
   change_percent: number | null
 }
 
+export type SummaryRange = 'today' | 'week' | 'month'
+
 export interface DashboardSummary {
-  range: 'week' | 'month'
+  range: SummaryRange
   start: string
   end: string
   total_patients: number | null
@@ -80,5 +82,7 @@ export interface DashboardSummary {
     expired_batches: number
   } | null
   pending_lab_orders: number | null
+  /** Patients registered at the lab waiting for the front desk to check (admin/staff). */
+  patients_to_check: number | null
   unpaid_invoices: number | null
 }

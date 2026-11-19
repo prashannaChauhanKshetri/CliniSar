@@ -237,7 +237,27 @@ action ends with a plain-words notification from `lib/notify.ts`.
 | Lab | Lab tests (report rows editor), lab orders, lab order detail | Results form with section headings, Normal/Abnormal per row, optional file |
 | Bills | List, detail with the same totals as the paper bill | Take payment (discount recalculated by the server), cancel with reason, print |
 | Documents | List, upload (type and 10 MB checked before sending), delete | |
-| Dashboard | Four cards, donut by status, bars by department, recent doctors, new patients | Cards adapt to the role (`features/dashboard/cards.ts`) |
+| Dashboard ("Today") | Task-first per role (see below), then the clinic's figures for admin and front desk | `features/dashboard/` |
+
+**Task-first screens.** Working pages are shaped by the work, not by a generic
+"header + table" template:
+
+| Who | Opens on | Shape |
+| --- | -------- | ----- |
+| Front desk, admin | Today: figures strip, **queue per doctor**, "Needs action" (unpaid bills, lab patients to check, lab work, stock), then clinic figures and charts | `FrontDeskToday.tsx` |
+| Doctor | **Next patient** with Write prescription / Order tests / Seen, the rest of the queue, latest lab results | `DoctorToday.tsx` |
+| Pharmacist | Who is waiting, low stock, expiring batches; Prescriptions opens the **dispensing counter** (list left, stock check right, Dispense disabled while anything is short) | `PharmacyToday.tsx`, `DispensingCounter.tsx` |
+| Lab technician | The **lab board**: to collect, results to enter, done today | `LabToday.tsx`, `LabBoard.tsx` |
+| Appointments | **Queue board** per doctor in calling order (due bookings, walk-ins by number, later bookings), or a list | `QueueBoard.tsx`, `lib/queue.ts` |
+
+The rules behind these boards are small pure functions with unit tests:
+`lib/queue.ts` (calling order, columns per doctor), `lib/stock.ts` (shortages before
+dispensing), `lib/labWork.ts` (lab columns). Visit actions (seen, cancel, prescribe,
+order tests) live in one hook, `useVisitActions`, so every board and list behaves alike.
+
+**Lab registrations.** In the lab order dialog, **New patient** opens the normal patient
+form; the API flags that patient (`needs_review`), and the front desk sees it in the bell,
+in "Needs action" and as a "Check details" badge until someone presses **Details checked**.
 
 ## 11. Printing (phase 10)
 

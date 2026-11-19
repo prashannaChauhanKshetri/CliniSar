@@ -26,6 +26,12 @@ export function alertsFrom(summary: DashboardSummary | undefined, role: Role): A
       '/expiry',
     ],
     [summary.pending_lab_orders, 'lab order is waiting', 'lab orders are waiting', '/lab-orders'],
+    [
+      summary.patients_to_check,
+      'patient registered at the lab needs checking',
+      'patients registered at the lab need checking',
+      '/patients?needs_review=true',
+    ],
     [summary.unpaid_invoices, 'bill is unpaid', 'bills are unpaid', '/invoices?status=UNPAID'],
   ]
   return candidates

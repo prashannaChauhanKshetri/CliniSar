@@ -165,6 +165,7 @@ Design rules used everywhere:
 | Stock change | purchase, adjust, dispense | `pharmacy/services.py: change_stock` | the only code that changes a batch; row lock; never below 0 |
 | Dispensing | `POST prescriptions/<id>/dispense/` | `dispense_prescription` | earliest expiry first, spill to next batch, expired never used, 409 changes nothing |
 | Lab order | `POST lab-orders/` and its steps | `lab/services.py` | status only moves forward; every row needs a result |
+| Lab registration | `POST patients/` by a lab technician; `POST patients/<id>/mark-checked/` | `accounts/views.py`, `accounts/services.py` | flag set by the server, never by the client; only admin/front desk clear it |
 | Dashboard | `GET dashboard/summary/` | `dashboard/services.py` | aggregates in the database, ~20 queries whatever the data size |
 
 ### Why locks and transactions
@@ -180,7 +181,7 @@ medicine twice. The pattern used everywhere:
 
 ## 8. Production qualities
 
-- **Tests**: about 580 pytest tests, including tenant isolation for every endpoint, the
+- **Tests**: about 590 pytest tests, including tenant isolation for every endpoint, the
   role matrix, races (simulated), money maths and rounding.
 - **Query efficiency**: lists use `select_related` / `prefetch_related` and annotations;
   tests assert query counts where it matters (medicine stock, doctor list, dashboard).

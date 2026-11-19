@@ -23,7 +23,8 @@ from apps.pharmacy.models import Medicine, MedicineBatch
 from apps.pharmacy.services import EXPIRING_SOON_DAYS
 from apps.scheduling.models import Appointment
 
-RANGE_DAYS = {"week": 7, "month": 30}
+# "today" compares today with yesterday; it feeds the task-first dashboard.
+RANGE_DAYS = {"today": 1, "week": 7, "month": 30}
 Role = User.Role
 
 
@@ -250,6 +251,11 @@ def summary(user: User, range_name: str) -> dict:
         "stock": stock_alerts(user.clinic, today) if scope.show_stock else None,
         "pending_lab_orders": scope.lab_orders.filter(pending_lab).count()
         if scope.lab_orders is not None
+        else None,
+        "patients_to_check": PatientProfile.objects.filter(
+            clinic=user.clinic, needs_review=True
+        ).count()
+        if user.role in (Role.CLINIC_ADMIN, Role.STAFF)
         else None,
         "unpaid_invoices": scope.invoices.filter(status=Invoice.Status.UNPAID).count()
         if scope.invoices is not None

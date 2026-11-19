@@ -257,11 +257,60 @@ def test_admin_and_staff_manage_patients(login_as, role) -> None:
     assert client.delete(url).status_code == 204
 
 
-@pytest.mark.parametrize("role", ["PHARMACIST", "LAB_TECHNICIAN"])
-def test_pharmacist_and_lab_technician_cannot_use_patients(login_as, role) -> None:
-    client = login_as(UserFactory(role=role))
+def test_pharmacist_cannot_use_patients(login_as) -> None:
+    client = login_as(UserFactory(role=Role.PHARMACIST))
     assert client.get(PATIENTS).status_code == 403
     assert client.post(PATIENTS, new_patient_data()).status_code == 403
+
+
+def test_lab_technician_searches_and_registers_but_cannot_edit(login_as) -> None:
+    """For people who come straight to the lab."""
+    lab_tech = UserFactory(role=Role.LAB_TECHNICIAN)
+    existing = PatientProfileFactory(clinic=lab_tech.clinic, first_name="Ram")
+    client = login_as(lab_tech)
+
+    assert client.get(PATIENTS, {"search": "ram"}).data["count"] == 1
+    created = client.post(PATIENTS, new_patient_data(first_name="Walk", last_name="In"))
+    assert created.status_code == 201
+    assert client.patch(f"{PATIENTS}{existing.id}/", {"phone": "1"}).status_code == 403
+    assert client.delete(f"{PATIENTS}{existing.id}/").status_code == 403
+
+
+def test_lab_registrations_need_checking_and_record_who(login_as) -> None:
+    lab_tech = UserFactory(role=Role.LAB_TECHNICIAN, first_name="Lab", last_name="Tech")
+    staff = UserFactory(clinic=lab_tech.clinic, role=Role.STAFF)
+
+    from_lab = login_as(lab_tech).post(PATIENTS, new_patient_data()).data
+    from_desk = login_as(staff).post(PATIENTS, new_patient_data(first_name="Desk")).data
+
+    assert (from_lab["needs_review"], from_lab["registered_by_name"]) == (True, "Lab Tech")
+    assert from_desk["needs_review"] is False
+
+
+def test_needs_review_cannot_be_set_by_the_client(login_as) -> None:
+    lab_tech = UserFactory(role=Role.LAB_TECHNICIAN)
+    created = login_as(lab_tech).post(PATIENTS, new_patient_data(needs_review=False)).data
+    assert created["needs_review"] is True
+
+
+def test_front_desk_lists_and_clears_patients_to_check(login_as) -> None:
+    staff = UserFactory(role=Role.STAFF)
+    flagged = PatientProfileFactory(clinic=staff.clinic, needs_review=True)
+    PatientProfileFactory(clinic=staff.clinic)
+    client = login_as(staff)
+
+    rows = client.get(PATIENTS, {"needs_review": "true"}).data["results"]
+    assert [row["id"] for row in rows] == [str(flagged.id)]
+
+    response = client.post(f"{PATIENTS}{flagged.id}/mark-checked/")
+    assert (response.status_code, response.data["needs_review"]) == (200, False)
+
+
+@pytest.mark.parametrize("role", [Role.LAB_TECHNICIAN, Role.DOCTOR])
+def test_only_front_desk_and_admin_clear_the_flag(login_as, role) -> None:
+    user = UserFactory(role=role)
+    flagged = PatientProfileFactory(clinic=user.clinic, needs_review=True)
+    assert login_as(user).post(f"{PATIENTS}{flagged.id}/mark-checked/").status_code == 403
 
 
 def test_doctor_sees_only_own_patients_and_cannot_change_them(login_as) -> None:

@@ -67,7 +67,7 @@ Inside each Django app: `models.py` (tables), `serializers.py` (JSON in and out)
 | STAFF          | Patients, appointments, documents, all invoices                         |
 | DOCTOR         | Own schedule and appointments, prescriptions and lab orders             |
 | PHARMACIST     | Medicines, batches, stock, dispensing, PHARMACY invoices                |
-| LAB_TECHNICIAN | Lab tests, lab orders, LAB invoices                                     |
+| LAB_TECHNICIAN | Lab tests, lab orders, LAB invoices; registers walk-in lab patients (front desk checks them) |
 
 ## Main flows
 

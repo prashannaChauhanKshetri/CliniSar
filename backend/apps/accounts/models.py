@@ -128,6 +128,16 @@ class PatientProfile(TenantModel):
     blood_group = models.CharField(max_length=3, choices=BloodGroup.choices, blank=True)
     address = models.CharField(max_length=255, blank=True)
     emergency_contact = models.CharField(max_length=100, blank=True)
+    # Who registered the patient. Patients registered at the lab counter are flagged
+    # so the front desk checks and completes their details.
+    registered_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="patients_registered",
+    )
+    needs_review = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-created_at"]

@@ -45,7 +45,11 @@ ENDPOINTS = [
     Endpoint("/api/v1/departments/", lambda clinic: DepartmentFactory(clinic=clinic)),
     Endpoint("/api/v1/staff/", lambda clinic: UserFactory(clinic=clinic)),
     Endpoint("/api/v1/doctors/", lambda clinic: DoctorProfileFactory(clinic=clinic)),
-    Endpoint("/api/v1/patients/", lambda clinic: PatientProfileFactory(clinic=clinic)),
+    Endpoint(
+        "/api/v1/patients/",
+        lambda clinic: PatientProfileFactory(clinic=clinic),
+        detail_requests=[*EDITABLE, ("post", "mark-checked/")],
+    ),
     Endpoint(
         "/api/v1/appointments/",
         lambda clinic: AppointmentFactory(clinic=clinic),

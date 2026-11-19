@@ -1,7 +1,7 @@
 /** One patient's record: details, then tabs for visits, prescriptions, lab, bills and files. */
-import { Anchor, Button, Card, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core'
-import { useQuery } from '@tanstack/react-query'
-import { Pencil, Upload } from 'lucide-react'
+import { Alert, Anchor, Button, Card, Group, Skeleton, Stack, Tabs, Text } from '@mantine/core'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { CheckCheck, FlaskConical, Pencil, Upload } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import {
@@ -21,6 +21,7 @@ import { PageHeader } from '../../components/PageHeader'
 import { StatusBadge } from '../../components/StatusBadge'
 import { formatBS, nepalDateOf } from '../../lib/date'
 import { formatTime } from '../../lib/forms'
+import { notifyError, notifySuccess } from '../../lib/notify'
 import { ageSex } from '../../lib/people'
 import { canOpen } from '../../routes/navigation'
 import { useAuth } from '../auth/useAuth'
@@ -31,7 +32,18 @@ export function PatientDetailPage() {
   const { id = '' } = useParams()
   const { user } = useAuth()
   const [editing, setEditing] = useState(false)
+  const queryClient = useQueryClient()
   const query = useQuery({ queryKey: ['patients', id], queryFn: () => patientsApi.get(id) })
+  const markChecked = useMutation({
+    mutationFn: () => patientsApi.markChecked(id),
+    onSuccess: (patient) => {
+      queryClient.setQueryData(['patients', id], patient)
+      void queryClient.invalidateQueries({ queryKey: ['patients'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      notifySuccess(`${patient.full_name}'s details are confirmed.`)
+    },
+    onError: (error) => notifyError(error),
+  })
   if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
   if (!query.data || !user) return <Skeleton h={320} radius="lg" />
   const patient = query.data
@@ -57,6 +69,34 @@ export function PatientDetailPage() {
         }
       />
       <Stack gap="lg">
+        {patient.needs_review && (
+          <Alert
+            color="primary"
+            variant="light"
+            icon={<FlaskConical size={18} />}
+            title="Registered at the lab"
+          >
+            <Stack gap="sm">
+              <Text size="sm">
+                {patient.registered_by_name ?? 'The lab'} registered this patient. Check the details
+                with the patient
+                {canEdit ? ', correct anything with Edit details, then confirm.' : '.'}
+              </Text>
+              {canEdit && (
+                <Group>
+                  <Button
+                    size="xs"
+                    leftSection={<CheckCheck size={14} />}
+                    loading={markChecked.isPending}
+                    onClick={() => markChecked.mutate()}
+                  >
+                    Details checked
+                  </Button>
+                </Group>
+              )}
+            </Stack>
+          </Alert>
+        )}
         <Card>
           <DetailList
             cols={4}

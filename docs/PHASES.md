@@ -1017,3 +1017,63 @@ Built in four commits (10a to 10d), each checked in a real browser before commit
 4. `frontend/src/features/billing/InvoiceDetailPage.tsx` and `src/lib/bills.ts`.
 5. `frontend/src/print/PrintLayout.tsx` and `src/print/InvoicePrint.tsx`.
 6. `frontend/src/features/dashboard/DashboardPage.tsx` and `cards.ts`.
+
+## Phase 10e - Lab registrations and task-first screens (your feedback)
+
+### 1. The lab can register a patient; the front desk checks them
+
+- **Why**: people often come straight to the lab. The lab technician could not even
+  search patients (the API refused), so a self-referred order was impossible.
+- **Back end**:
+  - Lab technicians may now **search and register** patients (not edit or delete).
+  - `PatientProfile` gains `registered_by` and `needs_review`. A lab registration is
+    flagged automatically; the client cannot set the flag.
+  - `POST patients/<id>/mark-checked/` (admin and front desk only) clears it.
+  - `patients/?needs_review=true` lists the flagged ones.
+  - The dashboard summary gains `patients_to_check` (admin and front desk), and a
+    `today` range (today against yesterday).
+- **Front end**:
+  - The lab order dialog has **New patient**; the new patient is chosen straight away.
+  - The front desk's bell and "Needs action" say "N patients from the lab to check";
+    the patient list has a filter and a "Check details" badge; the record explains who
+    registered the patient and has **Details checked**.
+- This is an in-app notice. E-mail and SMS stay out of scope, as in the brief.
+
+### 2. Task-first dashboard and task-shaped pages
+
+You said the screens looked generic ("built by AI") and that every page looked the
+same. The answer was to shape the main screens around the work each person does:
+
+- **Dashboard = "Today"**, different per role (front desk: queue per doctor and
+  "Needs action"; doctor: next patient; pharmacist: waiting list and stock problems;
+  lab: the work board). The earlier week/month figures and charts remain for admin
+  and front desk, below today's work.
+- **Appointments: queue board** with one column per doctor in calling order; the next
+  patient highlighted; seen visits folded away. The table remains as "List".
+- **Prescriptions for the pharmacist: dispensing counter**, with stock checked per
+  medicine before dispensing ("36 · short by 12"), Dispense disabled until it is fixed,
+  then "Take payment" for the new bill.
+- **Lab orders for the lab technician: work board** with to collect / results to enter
+  / done today, and "Sample collected" directly on each card.
+- Admin lists (departments, staff, medicines...) stay tables: that is the right shape
+  for looking things up.
+
+### Checks
+
+- Back end: 592 tests (new: lab technician access, the flag, mark-checked, the today
+  range, tenant isolation of the new action).
+- Front end: 115 tests (new: calling order, columns per doctor, Nepal clock, stock
+  shortages, lab columns, the new bell alert).
+- In headless Chrome: the lab technician registered "Lab Walkin" inside the order
+  dialog and ordered a test (Lab No. 5); the front desk saw "1 patient from the lab to
+  check", opened the filtered list and confirmed the details; the doctor's dashboard
+  showed the right next patient; the counter flagged a 12-bottle shortage and kept
+  Dispense disabled; no console errors.
+
+### Files to read first
+
+1. `backend/apps/accounts/views.py` - `PatientViewSet` permissions and `mark_checked`.
+2. `frontend/src/features/dashboard/DashboardPage.tsx` and the four `*Today.tsx` files.
+3. `frontend/src/lib/queue.ts` and `src/features/appointments/QueueBoard.tsx`.
+4. `frontend/src/features/prescriptions/DispensingCounter.tsx` and `src/lib/stock.ts`.
+5. `frontend/src/features/lab/LabBoard.tsx` and `src/lib/labWork.ts`.

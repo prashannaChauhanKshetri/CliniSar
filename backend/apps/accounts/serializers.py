@@ -228,6 +228,9 @@ class PatientSerializer(serializers.ModelSerializer):
     """
 
     full_name = serializers.CharField(read_only=True)
+    registered_by_name = serializers.CharField(
+        source="registered_by.get_full_name", read_only=True, allow_null=True
+    )
     age = serializers.SerializerMethodField()
     age_years = serializers.IntegerField(
         write_only=True, required=False, min_value=0, max_value=130
@@ -249,9 +252,11 @@ class PatientSerializer(serializers.ModelSerializer):
             "blood_group",
             "address",
             "emergency_contact",
+            "needs_review",
+            "registered_by_name",
             "created_at",
         ]
-        read_only_fields = ["date_of_birth_is_estimated"]
+        read_only_fields = ["date_of_birth_is_estimated", "needs_review"]
 
     def get_age(self, patient: PatientProfile) -> int | None:
         """Age today in Nepal, worked out from the date of birth."""

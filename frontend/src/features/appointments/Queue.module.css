@@ -1,0 +1,70 @@
+/* The queue: compact rows on a 4px grid, the next patient highlighted. */
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--mantine-radius-md);
+  border: 1px solid transparent;
+}
+
+.row:hover {
+  background: var(--clinisar-page);
+}
+
+.row[data-next] {
+  background: var(--mantine-color-primary-0);
+  border-color: var(--mantine-color-primary-2);
+}
+
+.row[data-done] {
+  opacity: 0.6;
+}
+
+.slot {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  color: var(--mantine-color-primary-7);
+}
+
+.who {
+  min-width: 0;
+}
+
+.name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-grey-7);
+}
+
+.more:hover {
+  background: var(--mantine-color-grey-0);
+}
+
+.columnHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid var(--mantine-color-default-border);
+  margin-bottom: 4px;
+}
