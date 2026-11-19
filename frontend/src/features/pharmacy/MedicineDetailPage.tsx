@@ -13,7 +13,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { PackagePlus, Pencil, SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { useLocation, useNavigate, useParams } from 'react-router'
 import { medicinesApi, type Batch } from '../../api/resources'
 import { DataTable } from '../../components/DataTable'
 import { DateText } from '../../components/DateText'
@@ -33,7 +33,12 @@ export function MedicineDetailPage() {
   const { id = '' } = useParams()
   const list = useListState()
   const [editing, setEditing] = useState(false)
-  const [buying, setBuying] = useState(false)
+  const location = useLocation()
+  const navigate = useNavigate()
+  // Just added on the list page: open "Record purchase" straight away.
+  const [buying, setBuying] = useState(
+    (location.state as { recordPurchase?: boolean } | null)?.recordPurchase === true,
+  )
   const [adjusting, setAdjusting] = useState<Batch | null>(null)
   const medicine = useQuery({ queryKey: ['medicines', id], queryFn: () => medicinesApi.get(id) })
   const batches = useQuery({
@@ -188,7 +193,16 @@ export function MedicineDetailPage() {
         </Card>
       </Stack>
       {editing && <MedicineForm medicine={m} onClose={() => setEditing(false)} />}
-      {buying && <PurchaseDialog medicine={m} onClose={() => setBuying(false)} />}
+      {buying && (
+        <PurchaseDialog
+          medicine={m}
+          onClose={() => {
+            setBuying(false)
+            // Forget the "just added" note so a page refresh does not reopen the dialog.
+            if (location.state) void navigate(location.pathname, { replace: true, state: null })
+          }}
+        />
+      )}
       {adjusting && <AdjustDialog batch={adjusting} onClose={() => setAdjusting(null)} />}
     </>
   )

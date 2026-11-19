@@ -105,7 +105,16 @@ export function MedicinesPage() {
           ]}
         />
       </Card>
-      {adding && <MedicineForm medicine={null} onClose={() => setAdding(false)} />}
+      {adding && (
+        <MedicineForm
+          medicine={null}
+          onClose={() => setAdding(false)}
+          // Open the new medicine with "Record purchase" ready: stock is the next step.
+          onSaved={(saved) =>
+            navigate(`/medicines/${saved.id}`, { state: { recordPurchase: true } })
+          }
+        />
+      )}
     </>
   )
 }

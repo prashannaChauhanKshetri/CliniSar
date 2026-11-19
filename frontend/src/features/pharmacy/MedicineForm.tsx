@@ -1,5 +1,10 @@
-/** Add or edit a medicine. Stock is not typed here: it comes from purchases (batches). */
-import { NumberInput, SimpleGrid, TextInput } from '@mantine/core'
+/**
+ * Add or edit a medicine. Stock is not typed here: it comes from purchases (batches),
+ * because each batch has its own expiry date. After adding, the list page opens the
+ * new medicine with "Record purchase" ready, so stock is the very next step.
+ */
+import { Alert, NumberInput, SimpleGrid, TextInput } from '@mantine/core'
+import { PackagePlus } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Controller, useForm } from 'react-hook-form'
 import { medicinesApi, type Medicine } from '../../api/resources'
@@ -19,9 +24,11 @@ interface MedicineValues {
 export function MedicineForm({
   medicine,
   onClose,
+  onSaved,
 }: {
   medicine: Medicine | null
   onClose: () => void
+  onSaved?: (medicine: Medicine) => void
 }) {
   const queryClient = useQueryClient()
   const form = useForm<MedicineValues>({
@@ -48,9 +55,10 @@ export function MedicineForm({
       notifySuccess(
         medicine
           ? `${saved.name} was updated.`
-          : `${saved.name} was added. Record a purchase to put it in stock.`,
+          : `${saved.name} was added. Now record the stock you have.`,
       )
       void queryClient.invalidateQueries({ queryKey: ['medicines'] })
+      onSaved?.(saved)
       onClose()
     },
     onError: (error) =>
@@ -68,7 +76,7 @@ export function MedicineForm({
       opened
       onClose={onClose}
       title={medicine ? 'Edit medicine' : 'Add medicine'}
-      submitLabel={medicine ? 'Save' : 'Add medicine'}
+      submitLabel={medicine ? 'Save' : 'Add and record stock'}
       submitting={save.isPending}
       onSubmit={form.handleSubmit((values) => save.mutate(values))}
     >
@@ -112,6 +120,12 @@ export function MedicineForm({
           )}
         />
       </SimpleGrid>
+      {!medicine && (
+        <Alert color="blue" variant="light" icon={<PackagePlus size={18} />}>
+          Stock is added in the next step, by batch: batch number, expiry date and number of units.
+          You can add more batches or correct stock later from the medicine’s page.
+        </Alert>
+      )}
     </FormModal>
   )
 }
