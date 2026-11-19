@@ -123,11 +123,20 @@ def test_doctor_can_read_medicines_but_not_change_them(login_as) -> None:
     assert client.get(f"{MEDICINES}{medicine.id}/batches/").status_code == 403
 
 
-@pytest.mark.parametrize("role", [Role.STAFF, Role.LAB_TECHNICIAN])
-def test_staff_and_lab_cannot_use_the_pharmacy(login_as, role) -> None:
-    client = login_as(UserFactory(role=role))
+def test_lab_cannot_use_the_pharmacy(login_as) -> None:
+    client = login_as(UserFactory(role=Role.LAB_TECHNICIAN))
     assert client.get(MEDICINES).status_code == 403
     assert client.get(BATCHES).status_code == 403
+
+
+def test_front_desk_runs_the_pharmacy_too(login_as) -> None:
+    """In a small clinic the front desk also hands out medicines and buys stock."""
+    staff = UserFactory(role=Role.STAFF)
+    client = login_as(staff)
+    created = client.post(MEDICINES, {"name": "ORS", "unit_price": "20.00"})
+    assert created.status_code == 201
+    assert client.get(BATCHES).status_code == 200
+    assert client.get(f"{MEDICINES}{created.data['id']}/batches/").status_code == 200
 
 
 def test_admin_manages_the_pharmacy(login_as) -> None:

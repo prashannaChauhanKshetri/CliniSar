@@ -41,3 +41,12 @@ export function getFieldErrors(error: unknown): Record<string, string> {
   }
   return fields
 }
+
+/** The patient a 409 "already registered" answer points to, or null for any other error. */
+export function getDuplicatePatient(error: unknown): { id: string; name: string } | null {
+  if (!isAxiosError(error) || error.response?.status !== 409) return null
+  const body = (error.response.data ?? {}) as ApiErrorBody
+  const id = body.existing_patient_id
+  const name = body.existing_patient_name
+  return typeof id === 'string' && typeof name === 'string' ? { id, name } : null
+}

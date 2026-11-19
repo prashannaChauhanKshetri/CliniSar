@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 
-from apps.accounts.models import DoctorProfile, User
+from apps.accounts.models import DoctorProfile, PatientProfile, User
 from apps.accounts.tests.factories import (
     DoctorProfileFactory,
     PatientProfileFactory,
@@ -372,3 +372,88 @@ def test_doctor_letterhead_fields_are_saved(login_as, admin) -> None:
     assert response.status_code == 201
     for field, value in letterhead.items():
         assert response.data[field] == value
+
+
+# ---------- one person, one record ----------
+
+
+def test_same_name_and_phone_is_refused_with_the_existing_patient(login_as) -> None:
+    staff = UserFactory(role=Role.STAFF)
+    client = login_as(staff)
+    existing = client.post(PATIENTS, new_patient_data()).data
+
+    # Different capitals and extra spaces are still the same person.
+    again = client.post(
+        PATIENTS, new_patient_data(first_name=" ram ", last_name="THAPA", phone="98000 00001")
+    )
+
+    assert again.status_code == 409
+    assert again.data["existing_patient_id"] == existing["id"]
+    assert again.data["existing_patient_name"] == "Ram Thapa"
+    assert PatientProfile.objects.filter(clinic=staff.clinic).count() == 1
+
+
+def test_lab_registration_of_a_known_patient_is_refused_too(login_as) -> None:
+    lab_tech = UserFactory(role=Role.LAB_TECHNICIAN)
+    PatientProfileFactory(
+        clinic=lab_tech.clinic, first_name="Ram", last_name="Thapa", phone="9800000001"
+    )
+    assert login_as(lab_tech).post(PATIENTS, new_patient_data()).status_code == 409
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"phone": ""},  # no phone: cannot tell, the screen warns instead
+        {"phone": "9811111111"},  # same name, other phone: another person
+        {"first_name": "Hari"},  # same phone, other name: a family member
+    ],
+)
+def test_these_are_different_patients(login_as, changes) -> None:
+    client = login_as(UserFactory(role=Role.STAFF))
+    assert client.post(PATIENTS, new_patient_data(**changes)).status_code == 201
+    assert client.post(PATIENTS, new_patient_data()).status_code == 201
+
+
+def test_two_same_name_patients_without_phone_are_allowed(login_as) -> None:
+    client = login_as(UserFactory(role=Role.STAFF))
+    assert client.post(PATIENTS, new_patient_data(phone="")).status_code == 201
+    assert client.post(PATIENTS, new_patient_data(phone="")).status_code == 201
+
+
+def test_editing_into_a_duplicate_is_refused_but_saving_yourself_is_fine(login_as) -> None:
+    client = login_as(UserFactory(role=Role.STAFF))
+    ram = client.post(PATIENTS, new_patient_data()).data
+    hari = client.post(PATIENTS, new_patient_data(first_name="Hari")).data
+
+    assert client.patch(f"{PATIENTS}{ram['id']}/", {"address": "Bardiya"}).status_code == 200
+    assert client.patch(f"{PATIENTS}{hari['id']}/", {"first_name": "Ram"}).status_code == 409
+
+
+def test_another_clinic_may_have_the_same_patient(login_as) -> None:
+    PatientProfileFactory(first_name="Ram", last_name="Thapa", phone="9800000001")
+    assert (
+        login_as(UserFactory(role=Role.STAFF)).post(PATIENTS, new_patient_data()).status_code == 201
+    )
+
+
+def test_database_refuses_a_duplicate_saved_past_the_check() -> None:
+    """The backstop for two desks saving the same person at the same moment."""
+    from django.db import IntegrityError
+
+    first = PatientProfileFactory(first_name="Ram", last_name="Thapa", phone="9800000001")
+    with pytest.raises(IntegrityError):
+        PatientProfileFactory(
+            clinic=first.clinic, first_name="RAM", last_name="thapa", phone="9800000001"
+        )
+
+
+def test_patients_with_the_same_name_can_be_listed(login_as) -> None:
+    """The form asks "is this one of them?" before registering a same-name patient."""
+    staff = UserFactory(role=Role.STAFF)
+    PatientProfileFactory(clinic=staff.clinic, first_name="Ram", last_name="Thapa", phone="")
+    PatientProfileFactory(clinic=staff.clinic, first_name="Ram", last_name="Karki")
+    response = login_as(staff).get(
+        PATIENTS, {"first_name__iexact": "ram", "last_name__iexact": "THAPA"}
+    )
+    assert response.data["count"] == 1

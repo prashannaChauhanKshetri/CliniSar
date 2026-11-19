@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.common.permissions import IsClinicAdmin, IsDoctor, IsPharmacist, ReadOnly
+from apps.common.permissions import IsClinicAdmin, IsDoctor, IsPharmacist, IsStaff, ReadOnly
 from apps.common.views import TenantViewSet
 
 from . import services
@@ -20,7 +20,9 @@ from .serializers import (
 )
 
 # Admin and pharmacist manage the pharmacy; doctors may read medicines to prescribe them.
-PHARMACY_MANAGERS = IsClinicAdmin | IsPharmacist
+# The front desk (STAFF) also runs the pharmacy: in a small clinic one person often
+# registers patients and hands out medicines at the same counter.
+PHARMACY_MANAGERS = IsClinicAdmin | IsPharmacist | IsStaff
 
 
 class MedicineViewSet(TenantViewSet):

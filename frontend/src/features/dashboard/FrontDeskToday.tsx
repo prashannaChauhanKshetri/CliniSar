@@ -1,4 +1,7 @@
-/** Front desk and clinic admin: the live queue, what needs action, then the clinic's figures. */
+/**
+ * Front desk and clinic admin: the live queue, what needs action (bills, lab patients,
+ * prescriptions waiting at the counter, stock), then the clinic's figures.
+ */
 import { Button, Grid, Group, Skeleton, Stack, Title } from '@mantine/core'
 import { Plus } from 'lucide-react'
 import { Link } from 'react-router'
@@ -8,10 +11,17 @@ import { useVisitActions } from '../appointments/useVisitActions'
 import { AnalyticsSection } from './AnalyticsSection'
 import { NeedsAction } from './NeedsAction'
 import { TodayStrip } from './TodayStrip'
+import { useQuery } from '@tanstack/react-query'
+import { prescriptionsApi } from '../../api/resources'
 import { useTodaySummary, useTodayVisits } from './useToday'
 
-export function FrontDeskToday({ isAdmin }: { isAdmin: boolean }) {
+export function FrontDeskToday() {
   const summary = useTodaySummary().data
+  // The front desk may also hand out medicines, so waiting prescriptions are its work too.
+  const waitingPrescriptions = useQuery({
+    queryKey: ['prescriptions', { status: 'PENDING', page_size: 1 }],
+    queryFn: () => prescriptionsApi.list({ status: 'PENDING', page_size: 1 }),
+  }).data?.count
   const visits = useTodayVisits()
   const actions = useVisitActions()
   const all = visits.data?.results ?? []
@@ -85,22 +95,24 @@ export function FrontDeskToday({ isAdmin }: { isAdmin: boolean }) {
                 many: 'lab orders in progress',
                 to: '/lab-orders?view=list',
               },
-              ...(isAdmin
-                ? [
-                    {
-                      count: summary?.stock?.low_stock_medicines,
-                      one: 'medicine low on stock',
-                      many: 'medicines low on stock',
-                      to: '/medicines?low_stock=true',
-                    },
-                    {
-                      count: summary?.stock?.expired_batches,
-                      one: 'expired batch to write off',
-                      many: 'expired batches to write off',
-                      to: '/expiry?view=expired',
-                    },
-                  ]
-                : []),
+              {
+                count: waitingPrescriptions,
+                one: 'prescription waiting for medicines',
+                many: 'prescriptions waiting for medicines',
+                to: '/prescriptions?status=PENDING',
+              },
+              {
+                count: summary?.stock?.low_stock_medicines,
+                one: 'medicine low on stock',
+                many: 'medicines low on stock',
+                to: '/medicines?low_stock=true',
+              },
+              {
+                count: summary?.stock?.expired_batches,
+                one: 'expired batch to write off',
+                many: 'expired batches to write off',
+                to: '/expiry?view=expired',
+              },
             ]}
           />
         </Grid.Col>

@@ -1,6 +1,7 @@
 /**
- * Prescriptions. For the pharmacist, "Waiting" opens the dispensing counter (waiting
- * list + stock check + dispense). Other views, and other roles, get the plain list.
+ * Prescriptions. For whoever hands out medicines (pharmacist, or the front desk in a
+ * small clinic), "Waiting" opens the dispensing counter (waiting list + stock check +
+ * dispense). Other views, and other roles, get the plain list.
  */
 import { Card, SegmentedControl, Text } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
@@ -12,15 +13,17 @@ import { PageHeader } from '../../components/PageHeader'
 import { StatusBadge } from '../../components/StatusBadge'
 import { useListState } from '../../lib/useListState'
 import { useAuth } from '../auth/useAuth'
+import { canDispense } from '../../lib/roles'
 import { DispensingCounter } from './DispensingCounter'
 
 export function PrescriptionsPage() {
   const { user } = useAuth()
   const list = useListState()
   const navigate = useNavigate()
-  // Pharmacists start on the waiting list; everyone else on all prescriptions.
-  const status = list.get('status') || (user?.role === 'PHARMACIST' ? 'PENDING' : 'ALL')
-  const atCounter = user?.role === 'PHARMACIST' && status === 'PENDING'
+  // Those who dispense start on the waiting list; everyone else on all prescriptions.
+  const dispenses = canDispense(user?.role)
+  const status = list.get('status') || (dispenses ? 'PENDING' : 'ALL')
+  const atCounter = dispenses && status === 'PENDING'
   const filters = { page: list.page, status: status === 'ALL' ? '' : status }
   const query = useQuery({
     queryKey: ['prescriptions', filters],

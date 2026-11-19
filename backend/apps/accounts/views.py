@@ -164,7 +164,12 @@ class PatientViewSet(TenantViewSet):
 
     queryset = PatientProfile.objects.select_related("registered_by")
     serializer_class = PatientSerializer
-    filterset_fields = ["needs_review"]
+    # first_name__iexact + last_name__iexact: "is someone with this name already here?"
+    filterset_fields = {
+        "needs_review": ["exact"],
+        "first_name": ["iexact"],
+        "last_name": ["iexact"],
+    }
     search_fields = ["first_name", "last_name", "phone"]
 
     def get_permissions(self):
@@ -177,11 +182,15 @@ class PatientViewSet(TenantViewSet):
     def perform_create(self, serializer) -> None:
         """Record who registered the patient; the lab's registrations need checking."""
         user = self.request.user
-        serializer.save(
+        services.save_patient(
+            serializer,
             clinic=user.clinic,
             registered_by=user,
             needs_review=user.role == User.Role.LAB_TECHNICIAN,
         )
+
+    def perform_update(self, serializer) -> None:
+        services.save_patient(serializer)
 
     @extend_schema(request=None, responses=PatientSerializer)
     @action(detail=True, methods=["post"], url_path="mark-checked")

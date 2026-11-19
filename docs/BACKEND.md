@@ -96,7 +96,8 @@ so middleware does not yet know the user.
   `&`, e.g. `IsClinicAdmin | ReadOnly`.
 - **Row level**: `get_queryset()` narrows further, e.g. a doctor sees only their own
   appointments and their own patients' prescriptions, lab orders and documents; a
-  pharmacist sees only PHARMACY invoices.
+  pharmacist sees only PHARMACY invoices. The front desk (STAFF) may also run the
+  pharmacy and dispense, because in a small clinic one person does both.
 - The front end hides menus a role cannot use, but **the API is the real guard**: every
   request is checked again here.
 
@@ -165,6 +166,7 @@ Design rules used everywhere:
 | Stock change | purchase, adjust, dispense | `pharmacy/services.py: change_stock` | the only code that changes a batch; row lock; never below 0 |
 | Dispensing | `POST prescriptions/<id>/dispense/` | `dispense_prescription` | earliest expiry first, spill to next batch, expired never used, 409 changes nothing |
 | Lab order | `POST lab-orders/` and its steps | `lab/services.py` | status only moves forward; every row needs a result |
+| One person, one record | `POST`/`PATCH patients/` | `accounts/services.py: find_duplicate_patient` | same name (any capitals) + same phone in a clinic -> 409 with the existing patient; a unique constraint on `(clinic, lower(first_name), lower(last_name), phone)` catches two desks at once |
 | Lab registration | `POST patients/` by a lab technician; `POST patients/<id>/mark-checked/` | `accounts/views.py`, `accounts/services.py` | flag set by the server, never by the client; only admin/front desk clear it |
 | Dashboard | `GET dashboard/summary/` | `dashboard/services.py` | aggregates in the database, ~20 queries whatever the data size |
 

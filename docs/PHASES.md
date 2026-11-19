@@ -1077,3 +1077,47 @@ same. The answer was to shape the main screens around the work each person does:
 3. `frontend/src/lib/queue.ts` and `src/features/appointments/QueueBoard.tsx`.
 4. `frontend/src/features/prescriptions/DispensingCounter.tsx` and `src/lib/stock.ts`.
 5. `frontend/src/features/lab/LabBoard.tsx` and `src/lib/labWork.ts`.
+
+## Phase 10f - Front desk runs the pharmacy; one person, one record (your feedback)
+
+### 1. The front desk can hand out medicines
+
+- **Why**: in a small clinic the person at the front desk often also gives medicines.
+- **Back end**: STAFF joins the pharmacy roles (medicines, batches, purchases,
+  adjustments) and may call `prescriptions/<id>/dispense/`. Admin, doctors and the lab
+  still cannot dispense. The pharmacist keeps everything they had.
+- **Front end**: the front desk sees the Pharmacy menu (Medicines, Expiry); Prescriptions
+  opens the dispensing counter on "Waiting"; the dashboard's "Needs action" adds
+  "N prescriptions waiting for medicines", low stock and expired batches.
+  `lib/roles.ts: canDispense` holds the rule for the screens.
+
+### 2. There cannot be two records for the same patient
+
+- **The rule**: the same full name (any capitals, extra spaces ignored) **and** the same
+  phone number cannot be registered twice in one clinic.
+- **Why not name alone**: real people share names (two "Ram Thapa"), and many patients
+  in the paper register have no phone. For those, the screen warns instead of refusing.
+- **Back end**:
+  - The serializer tidies names and phone, then `find_duplicate_patient` answers **409**
+    with the existing patient's id and name. Editing a patient into a duplicate is
+    refused the same way.
+  - A database unique constraint (`unique_patient_name_and_phone`, only when a phone is
+    given) is the backstop when two desks save the same person at the same moment.
+  - `patients/?first_name__iexact=&last_name__iexact=` finds same-name patients.
+- **Front end** (`PatientForm`, used by the front desk, the booking page and the lab):
+  - Before registering, same-name patients are listed: "Already registered? ..." with
+    **This is the patient**; otherwise "Register as a new patient".
+  - If the server refuses, a red "Already registered" box offers **Use <name>**.
+- Another clinic may of course have its own patient with the same name and phone.
+
+### Checks
+
+- Back end: new tests for the refusal (capitals and spaces), what is NOT a duplicate
+  (no phone, other phone, family member), edits, other clinics, the database backstop,
+  the same-name look-up, and front desk pharmacy and dispensing.
+- Front end: tests for reading the 409 answer and for name tidying.
+- In headless Chrome: "hari / GURUNG" showed the existing Hari Gurung and opened that
+  record; with his phone the server refused and "Use Hari Gurung" opened the existing
+  record; the lab technician's order dialog picked the existing patient; the front desk
+  saw the Pharmacy menu, the dispensing counter and "1 prescription waiting for
+  medicines"; no console errors.

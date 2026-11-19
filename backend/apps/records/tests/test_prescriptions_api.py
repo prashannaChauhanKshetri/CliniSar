@@ -219,8 +219,17 @@ def test_dispensing_twice_gives_400(login_as) -> None:
     assert client.post(f"{PRESCRIPTIONS}{prescription.id}/dispense/").status_code == 400
 
 
-@pytest.mark.parametrize("role", [Role.STAFF, Role.CLINIC_ADMIN, Role.DOCTOR])
-def test_only_pharmacists_dispense(login_as, role) -> None:
+@pytest.mark.parametrize("role", [Role.PHARMACIST, Role.STAFF])
+def test_pharmacist_and_front_desk_dispense(login_as, role) -> None:
+    prescription, _ = stocked_prescription(50)
+    user = UserFactory(clinic=prescription.clinic, role=role)
+    response = login_as(user).post(f"{PRESCRIPTIONS}{prescription.id}/dispense/")
+    assert response.status_code == 200
+    assert response.data["dispensed_by_name"] == user.get_full_name()
+
+
+@pytest.mark.parametrize("role", [Role.CLINIC_ADMIN, Role.DOCTOR, Role.LAB_TECHNICIAN])
+def test_other_roles_cannot_dispense(login_as, role) -> None:
     prescription, _ = stocked_prescription(50)
     user = UserFactory(clinic=prescription.clinic, role=role)
     assert login_as(user).post(f"{PRESCRIPTIONS}{prescription.id}/dispense/").status_code == 403

@@ -15,6 +15,7 @@ import { StatusBadge } from '../../components/StatusBadge'
 import { formatNepalTime } from '../../lib/date'
 import { notifySuccess } from '../../lib/notify'
 import { ageSex } from '../../lib/people'
+import { canDispense } from '../../lib/roles'
 import { useAuth } from '../auth/useAuth'
 import { BillLink } from '../billing/BillLink'
 
@@ -50,7 +51,7 @@ export function PrescriptionDetailPage() {
   if (query.error) return <ErrorState error={query.error} onRetry={() => void query.refetch()} />
   if (!query.data) return <Skeleton h={320} radius="lg" />
   const prescription = query.data
-  const canDispense = user?.role === 'PHARMACIST' && prescription.status === 'PENDING'
+  const dispensable = canDispense(user?.role) && prescription.status === 'PENDING'
 
   return (
     <>
@@ -70,7 +71,7 @@ export function PrescriptionDetailPage() {
             >
               Print
             </Button>
-            {canDispense && (
+            {dispensable && (
               <Button leftSection={<PackageCheck size={16} />} onClick={() => setConfirming(true)}>
                 Dispense
               </Button>

@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import User
 from apps.common.audit import Action, AuditLogMixin
-from apps.common.permissions import IsAdminOrStaff, IsDoctor, IsPharmacist, ReadOnly
+from apps.common.permissions import IsAdminOrStaff, IsDoctor, IsPharmacist, IsStaff, ReadOnly
 from apps.common.views import TenantViewSet
 from apps.pharmacy import services as pharmacy
 
@@ -26,7 +26,7 @@ def only_own_patients(queryset, user, patient_field: str):
 
 
 class PrescriptionViewSet(AuditLogMixin, TenantViewSet):
-    """prescriptions/: list, create (doctor), retrieve, plus dispense/ (pharmacist)."""
+    """prescriptions/: list, create (doctor), retrieve, and dispense/ (pharmacist, front desk)."""
 
     queryset = Prescription.objects.select_related(
         "appointment__patient", "appointment__doctor__user", "dispensed_by"
@@ -40,7 +40,7 @@ class PrescriptionViewSet(AuditLogMixin, TenantViewSet):
         if self.action == "create":
             return [IsDoctor()]
         if self.action == "dispense":
-            return [IsPharmacist()]
+            return [(IsPharmacist | IsStaff)()]  # the front desk may dispense too
         return [(IsAdminOrStaff | IsDoctor | IsPharmacist)()]
 
     def get_queryset(self):

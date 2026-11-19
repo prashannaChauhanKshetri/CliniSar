@@ -1,6 +1,6 @@
 import { AxiosError, AxiosHeaders } from 'axios'
 import { describe, expect, it } from 'vitest'
-import { getErrorMessage, getFieldErrors } from './errors'
+import { getDuplicatePatient, getErrorMessage, getFieldErrors } from './errors'
 
 function httpError(status: number, data: unknown, headers: Record<string, string> = {}) {
   const config = { headers: new AxiosHeaders() }
@@ -48,5 +48,22 @@ describe('getFieldErrors', () => {
       phone: 'Too long.',
     })
     expect(getFieldErrors(httpError(409, { detail: 'x' }))).toEqual({})
+  })
+})
+
+describe('getDuplicatePatient', () => {
+  it('reads the existing patient from a duplicate answer', () => {
+    const error = httpError(409, {
+      detail: 'Ram Thapa with this phone is already registered.',
+      existing_patient_id: 'p1',
+      existing_patient_name: 'Ram Thapa',
+    })
+    expect(getDuplicatePatient(error)).toEqual({ id: 'p1', name: 'Ram Thapa' })
+  })
+
+  it('ignores other conflicts and other errors', () => {
+    expect(getDuplicatePatient(httpError(409, { detail: 'Slot taken.' }))).toBeNull()
+    expect(getDuplicatePatient(httpError(400, { existing_patient_id: 'p1' }))).toBeNull()
+    expect(getDuplicatePatient(new Error('x'))).toBeNull()
   })
 })

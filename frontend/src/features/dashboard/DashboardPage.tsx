@@ -29,9 +29,7 @@ export function DashboardPage() {
       {user.role === 'DOCTOR' && <DoctorToday />}
       {user.role === 'PHARMACIST' && <PharmacyToday />}
       {user.role === 'LAB_TECHNICIAN' && <LabToday />}
-      {(user.role === 'CLINIC_ADMIN' || user.role === 'STAFF') && (
-        <FrontDeskToday isAdmin={user.role === 'CLINIC_ADMIN'} />
-      )}
+      {(user.role === 'CLINIC_ADMIN' || user.role === 'STAFF') && <FrontDeskToday />}
     </>
   )
 }

@@ -64,7 +64,7 @@ Inside each Django app: `models.py` (tables), `serializers.py` (JSON in and out)
 | -------------- | ----------------------------------------------------------------------- |
 | SUPER_ADMIN    | Django admin only: create clinics and their first admin                 |
 | CLINIC_ADMIN   | Clinic settings and VAT, staff, doctors, departments; everything STAFF can |
-| STAFF          | Patients, appointments, documents, all invoices                         |
+| STAFF          | Patients, appointments, documents, all invoices; also the pharmacy and dispensing (small clinics) |
 | DOCTOR         | Own schedule and appointments, prescriptions and lab orders             |
 | PHARMACIST     | Medicines, batches, stock, dispensing, PHARMACY invoices                |
 | LAB_TECHNICIAN | Lab tests, lab orders, LAB invoices; registers walk-in lab patients (front desk checks them) |

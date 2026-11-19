@@ -3,13 +3,14 @@
 import datetime
 
 from django.contrib.auth import authenticate
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework.exceptions import APIException, AuthenticationFailed
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.clinics.models import Clinic
+from apps.common.exceptions import Conflict
 
 from .models import DoctorProfile, PatientProfile, User
 
@@ -123,3 +124,57 @@ def mark_patient_checked(patient: PatientProfile) -> PatientProfile:
     patient.needs_review = False
     patient.save(update_fields=["needs_review", "updated_at"])
     return patient
+
+
+# ---------- patients: one person, one record ----------
+
+
+class DuplicatePatient(Conflict):
+    """409: this name and phone are already registered. Says WHICH patient, so the
+    screen can offer to open (or use) the existing record instead."""
+
+    default_code = "duplicate_patient"
+
+    def __init__(self, existing: PatientProfile) -> None:
+        super().__init__(
+            {
+                "detail": f"{existing.full_name} with this phone is already registered.",
+                "existing_patient_id": str(existing.id),
+                "existing_patient_name": existing.full_name,
+            }
+        )
+
+
+def find_duplicate_patient(
+    clinic: Clinic, first_name: str, last_name: str, phone: str, exclude_id=None
+) -> PatientProfile | None:
+    """The patient already registered with this name (any capitals) and phone, if any.
+
+    Name AND phone, because each alone is not enough: family members share a phone,
+    and different people share a name. Without a phone we cannot tell two people
+    apart, so the screen only warns about same-name patients instead of refusing.
+    """
+    if not phone:
+        return None
+    matches = PatientProfile.objects.filter(
+        clinic=clinic,
+        first_name__iexact=first_name,
+        last_name__iexact=last_name,
+        phone=phone,
+    )
+    if exclude_id is not None:
+        matches = matches.exclude(pk=exclude_id)
+    return matches.first()
+
+
+def save_patient(serializer, **extra) -> PatientProfile:
+    """Save a new or changed patient; a duplicate created at the same moment gets a 409.
+
+    The serializer already refused known duplicates. Only a race (two desks saving the
+    same person at once) reaches the database constraint.
+    """
+    try:
+        with transaction.atomic():
+            return serializer.save(**extra)
+    except IntegrityError as error:
+        raise Conflict("This patient was just registered. Please search for them.") from error

@@ -267,8 +267,18 @@ class PatientSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Date of birth cannot be in the future.")
         return value
 
+    def validate_first_name(self, value: str) -> str:
+        return " ".join(value.split())  # "  ram   bahadur " -> "ram bahadur"
+
+    def validate_last_name(self, value: str) -> str:
+        return " ".join(value.split())
+
+    def validate_phone(self, value: str) -> str:
+        return "".join(value.split())  # "98 4123 4567" -> "9841234567"
+
     def validate(self, data: dict) -> dict:
-        """Turn age_years into an estimated date of birth."""
+        """Refuse a second record for the same person; turn age_years into a date of birth."""
+        self.refuse_duplicate(data)
         age_years = data.pop("age_years", None)
         if age_years is not None and data.get("date_of_birth"):
             raise serializers.ValidationError("Send either date_of_birth or age_years, not both.")
@@ -278,3 +288,23 @@ class PatientSerializer(serializers.ModelSerializer):
         elif "date_of_birth" in data:
             data["date_of_birth_is_estimated"] = False
         return data
+
+    def refuse_duplicate(self, data: dict) -> None:
+        """409 with the existing patient when this name + phone is already registered.
+
+        On an edit, fields that are not sent keep their current value.
+        """
+        current = self.instance
+
+        def value(field: str) -> str:
+            return data.get(field, getattr(current, field, ""))
+
+        existing = services.find_duplicate_patient(
+            self.context["request"].user.clinic,
+            value("first_name"),
+            value("last_name"),
+            value("phone"),
+            exclude_id=current.pk if current else None,
+        )
+        if existing:
+            raise services.DuplicatePatient(existing)

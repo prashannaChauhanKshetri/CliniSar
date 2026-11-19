@@ -5,6 +5,7 @@ import datetime
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.db.models import Q
+from django.db.models.functions import Lower
 
 from apps.common.models import BaseModel, TenantModel, money_field
 
@@ -141,6 +142,21 @@ class PatientProfile(TenantModel):
 
     class Meta:
         ordering = ["-created_at"]
+        constraints = [
+            # One person, one record: the same name (any capitals) and the same phone
+            # cannot be registered twice in a clinic. Patients without a phone are not
+            # covered, because different people really do share a name.
+            # services.find_duplicate_patient gives the friendly answer; this is the
+            # backstop for two registrations at the same moment.
+            models.UniqueConstraint(
+                "clinic",
+                Lower("first_name"),
+                Lower("last_name"),
+                "phone",
+                condition=~Q(phone=""),
+                name="unique_patient_name_and_phone",
+            )
+        ]
 
     def __str__(self) -> str:
         return self.full_name

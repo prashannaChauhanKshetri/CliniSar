@@ -14,3 +14,13 @@ export function ageSex(age: number | null, gender: string): string {
   const sex = { MALE: 'M', FEMALE: 'F', OTHER: 'O' }[gender] ?? '—'
   return `${age ?? '—'} yrs / ${sex}`
 }
+
+/** A name as the server stores it: no spaces at the ends, single spaces inside. */
+export function tidyName(name: string): string {
+  return name.trim().split(/\s+/).join(' ')
+}
+
+/** "ram  THAPA" and "Ram Thapa" are the same name when looking for an existing patient. */
+export function sameNameKey(firstName: string, lastName: string): string {
+  return `${tidyName(firstName)}|${tidyName(lastName)}`.toLowerCase()
+}
