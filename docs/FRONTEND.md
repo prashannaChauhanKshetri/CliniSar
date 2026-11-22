@@ -213,7 +213,16 @@ the default settings of each Mantine component. Pages never hard-code a colour.
 - **Resilience**: requests retry only for network or 5xx errors (never for "not allowed"
   or "invalid"); a 20-second timeout; data stays fresh for 30 seconds then refreshes.
 - **Security**: no token in storage, cookie not readable by scripts, all cached data
-  cleared on sign-out or session end.
+  cleared on sign-out or session end. In production CloudFront adds a strict
+  Content-Security-Policy (scripts only from the app, API calls only to the API),
+  HSTS, nosniff and X-Frame-Options (docs/DEPLOY.md, step 10). The app has no inline
+  scripts, which is what makes that policy possible.
+- **Where the API is** (`api/client.ts: API_BASE`): in development the app calls
+  `/api/v1` on its own address and Vite forwards it to Django. In production the app
+  (`app.<domain>`) and the API (`api.<domain>`) are separate, so the build reads
+  `VITE_API_URL`. Both are on the same site, so the `SameSite=Strict` refresh cookie
+  still travels. A production build was rehearsed this way locally (phase 11): login,
+  reloads and every main screen under the real security headers, without errors.
 - **Tests** (`npm test`): conversions and money, the token refresh rules (including the
   single shared refresh), error messages, menus and access per role, route guards, the
   login page, the table states, the date picker, and the layout. A real-browser check

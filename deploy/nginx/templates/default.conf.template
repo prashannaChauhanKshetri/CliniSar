@@ -1,0 +1,62 @@
+# nginx: the HTTPS front door of the API on the EC2 server.
+#
+# The official nginx image fills in ${API_DOMAIN} from the environment when the
+# container starts (its "templates" feature). nginx's own variables such as $host are
+# left alone, because no environment variable has those names.
+
+# ---------- per-IP rate limits ----------
+# A coarse first line of defence before Django's own limits (per user, per IP):
+# - api: on average 20 requests a second per address, bursts of 100 allowed. One
+#   screen fires about 10 calls at once, and a whole clinic usually shares ONE
+#   internet address, so several people opening screens together must still pass.
+# - admin_login: 5 a minute for the Django admin login (the super admin's page,
+#   which Django's API rate limits do not cover).
+limit_req_zone $binary_remote_addr zone=api:10m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=admin_login:1m rate=5r/m;
+limit_req_status 429;
+
+# Plain HTTP is only ever redirected to HTTPS.
+server {
+    listen 80;
+    server_name ${API_DOMAIN};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${API_DOMAIN};
+
+    # Let's Encrypt certificate, created and renewed by Certbot on the host
+    # (see docs/DEPLOY.md, step 9).
+    ssl_certificate     /etc/letsencrypt/live/${API_DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${API_DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_session_cache shared:SSL:10m;
+
+    server_tokens off;          # do not advertise the nginx version
+    client_max_body_size 11m;   # uploads are at most 10 MB (Django checks again)
+
+    # Every request passed to Django carries the real client address and the fact
+    # that it came in over HTTPS (prod.py: SECURE_PROXY_SSL_HEADER, NUM_PROXIES).
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 60s;
+
+    # CSS and JavaScript of the Django admin and the API docs page.
+    location /static/ {
+        alias /srv/static/;
+        expires 7d;
+    }
+
+    location = /admin/login/ {
+        limit_req zone=admin_login burst=3 nodelay;
+        proxy_pass http://backend:8000;
+    }
+
+    location / {
+        limit_req zone=api burst=100 nodelay;
+        proxy_pass http://backend:8000;
+    }
+}

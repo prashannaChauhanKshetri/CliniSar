@@ -110,7 +110,7 @@ so middleware does not yet know the user.
 | Rotation | each refresh returns a new refresh token and blacklists the old one | a stolen refresh token works at most once |
 | Logout | blacklists the refresh token and clears the cookie | a copied cookie stops working |
 | Passwords | Django validators, minimum 8 characters, stored hashed | never stored readable |
-| Brute force | 5 login attempts per minute per IP (`LoginRateThrottle`) | slows password guessing |
+| Rate limits | every endpoint: 300/min per user, 120/min per IP when not logged in, login 5/min per IP; nginx adds 20/s per IP and 5/min on the admin login | slows password guessing and stops one client from flooding the API |
 | Uploads | PDF/JPG/PNG only, max 10 MB, first bytes checked (`apps/common/validators.py`) | a renamed program is refused |
 | Settings | secrets from environment variables; `prod.py` refuses to start without a secret key | no secret in Git |
 | Audit | who created/changed/deleted appointments, prescriptions, lab orders, invoices, documents | accountability |
@@ -183,7 +183,7 @@ medicine twice. The pattern used everywhere:
 
 ## 8. Production qualities
 
-- **Tests**: about 590 pytest tests, including tenant isolation for every endpoint, the
+- **Tests**: about 610 pytest tests, including tenant isolation for every endpoint, the
   role matrix, races (simulated), money maths and rounding.
 - **Query efficiency**: lists use `select_related` / `prefetch_related` and annotations;
   tests assert query counts where it matters (medicine stock, doctor list, dashboard).
@@ -194,6 +194,14 @@ medicine twice. The pattern used everywhere:
 - **Configuration**: everything environment-specific comes from environment variables
   (`.env.example` lists them); `dev.py` and `prod.py` differ only where they must.
 - **Time**: stored in UTC, interpreted in `Asia/Kathmandu` for "today" and "now".
+- **Production settings** (`config/settings/prod.py`, phase 11): HTTPS is ended by nginx,
+  which tells Django through `X-Forwarded-Proto` (`SECURE_PROXY_SSL_HEADER`); plain HTTP is
+  redirected; HSTS for a year; rate-limit counters in a database cache table so all
+  Gunicorn workers share them; `NUM_PROXIES = 1` so limits count the real client
+  address, not nginx's. `manage.py check --deploy` passes (only the HSTS "preload"
+  reminder is switched off, on purpose).
+- **Running it**: `backend/Dockerfile` (Gunicorn, non-root user), `deploy/` (nginx,
+  Compose file, release script) and the CI workflow; see docs/DEPLOY.md.
 
 ## 9. Where to start reading
 

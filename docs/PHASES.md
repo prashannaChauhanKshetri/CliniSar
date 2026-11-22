@@ -1121,3 +1121,93 @@ same. The answer was to shape the main screens around the work each person does:
   record; the lab technician's order dialog picked the existing patient; the front desk
   saw the Pharmacy menu, the dispensing counter and "1 prescription waiting for
   medicines"; no console errors.
+
+## Phase 11 - Going live: production Docker, CI/CD, AWS guide, README
+
+### What was built
+
+| File | What it does |
+| ---- | ------------ |
+| `backend/Dockerfile` | Production image: Django on Gunicorn (3 workers), runs as a non-root user, copies the admin's static files at start |
+| `deploy/nginx/templates/default.conf.template` | nginx: HTTPS with the Let's Encrypt certificate, HTTP -> HTTPS, per-IP limits, uploads up to 10 MB, passes the real client address and scheme to Django |
+| `deploy/docker-compose.prod.yml` | The server's two containers (nginx, backend), both logging to CloudWatch |
+| `deploy/deploy.sh` | One release on the server: settings from Parameter Store -> pull image -> migrate -> restart |
+| `.github/workflows/ci.yml` | As before on every push; on `main` also: image to ECR and deploy on EC2 (through Systems Manager, no SSH), front end to S3 and CloudFront |
+| `docs/DEPLOY.md` | Step-by-step AWS setup in ap-south-1 (VPC, RDS, S3, EC2 + IAM role, Parameter Store, Certbot, CloudFront + ACM, Route 53, CloudWatch), releases and rollback |
+| `docs/MANUAL_TESTS.md` | The click-through checklist (your choice), with a 5-minute list for every release |
+| `README.md` | Final version: features, running, demo logins, checks, docs |
+
+### Your go-live choices
+
+- **HTTPS and security headers**:
+  - Django in production trusts nginx's `X-Forwarded-Proto`, redirects HTTP, sends HSTS
+    for a year, nosniff, `X-Frame-Options: DENY`, and trusts its own address for the
+    admin's forms.
+  - The app gets a strict Content-Security-Policy and the same headers from CloudFront.
+  - `manage.py check --deploy` passes. Only the HSTS "preload" reminder is switched off,
+    because preloading is the domain owner's decision.
+- **Rate limits everywhere**:
+  - Every endpoint now has one: 300 a minute per logged-in user, 120 a minute per IP
+    for calls without login (refresh, logout), and 5 a minute for login.
+  - Why 120 and not lower: a whole clinic usually shares one internet address, and
+    every page load or print tab makes one refresh call. If a refresh is refused the
+    person is signed out, so this limit must not bite during a busy morning. The
+    refresh still needs a valid cookie, so a high limit gives a guesser nothing.
+  - Production keeps the counters in a database cache table, so all Gunicorn workers
+    share them (otherwise each worker counted on its own).
+  - `NUM_PROXIES = 1`, so the limit counts the real client and not nginx.
+  - nginx adds 20 requests a second per IP (bursts of 100, again for a shared clinic
+    address) and 5 a minute on the Django admin login.
+- **CloudWatch**: Docker's `awslogs` driver sends both containers' output to the log
+  group `/clinisar/production`. DEPLOY.md shows how to find a request by the id that
+  the app shows in error messages. No alarms, as you chose; no health-check endpoint or
+  CI security audits either.
+
+### Design decisions
+
+- **Two addresses, one site**:
+  - The app is `app.<domain>` (CloudFront) and the API is `api.<domain>` (EC2),
+    exactly as the brief describes.
+  - The build sets `VITE_API_URL`; development still uses Vite's proxy.
+  - Because both are on one domain, the `SameSite=Strict` refresh cookie keeps working.
+- **No SSH**:
+  - CI runs `deploy.sh` through AWS Systems Manager.
+  - You open a shell with Session Manager, so the server has only ports 80 and 443 open.
+- **Old front-end files are kept on each release**, so a tab opened before the release
+  can still load pages it has not opened yet. `index.html` is never cached; the
+  hashed files are cached for a year.
+- **Certificate renewal**: Certbot on the server renews automatically and stops nginx for
+  a few seconds while it does.
+
+### Checks
+
+- Back end: 609 tests, including new ones for the per-user and per-IP limits and for
+  the production settings (HTTPS, HSTS, shared counters, real client address).
+  Ruff clean, no missing migrations, `check --deploy` clean.
+- Front end: 119 tests, lint, types and build.
+- Workflow checked with `actionlint` (including shellcheck of its scripts);
+  `deploy.sh` checked with shellcheck.
+- **Rehearsal of the production layout** (headless Chrome):
+  - a production build calling the API on another address, served with the exact
+    CloudFront security headers;
+  - sign-in, a cookie refresh on every reload, and the main screens all worked;
+  - no CSP violations and no console errors.
+- **Rehearsal of the server** (Docker, with the real production files):
+  - What stood in for AWS: a throwaway PostgreSQL instead of RDS, a self-signed
+    certificate instead of Let's Encrypt, local logs instead of CloudWatch, and high
+    ports.
+  - The image builds and runs as a non-root user; migrate and createcachetable
+    worked; Gunicorn started its workers.
+  - HTTP redirects to HTTPS; the API answers with HSTS, nosniff,
+    `X-Frame-Options: DENY` and a request id; the admin's static files and the API
+    docs load.
+  - The 6th wrong login got 429 although three workers share the work, so the
+    counters really are shared.
+  - 100 calls at once from one address all passed; a flood of 150 got the extra ones
+    refused (429); the admin login was limited after its burst.
+- **Limits adjusted after the rehearsal**: the first numbers (30 a minute without
+  login; nginx 10/s with bursts of 40) could have signed out staff in a busy clinic
+  that shares one internet address. They are now 120 a minute and 20/s with bursts
+  of 100 (see "Rate limits everywhere" above).
+- Not done: nothing was created in AWS (the brief says to set AWS up by hand). The
+  first real deploy is the first push to `main` after following DEPLOY.md.

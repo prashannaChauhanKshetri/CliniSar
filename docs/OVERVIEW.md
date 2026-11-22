@@ -2,6 +2,7 @@
 
 A compact guide to the whole project. For the build history, see [PHASES.md](PHASES.md).
 For how each half works in depth: [BACKEND.md](BACKEND.md) and [FRONTEND.md](FRONTEND.md).
+Going live: [DEPLOY.md](DEPLOY.md). Click-through checklist: [MANUAL_TESTS.md](MANUAL_TESTS.md).
 
 ## What it is
 
@@ -34,6 +35,7 @@ backend/
   apps/lab/        LabTest, LabOrder
   apps/billing/    Invoice, InvoiceItem, payments, VAT
   apps/dashboard/  summary endpoint (no models)
+deploy/            production: docker-compose.prod.yml, nginx template, deploy.sh
 frontend/src/
   api/ components/ features/ pages/ print/ routes/
   lib/             date.ts (Bikram Sambat), money.ts (rupee formatting)
@@ -114,7 +116,10 @@ locked. There are no refunds.
 
 - Login returns a 15-minute access token in JSON; the front end keeps it in memory.
 - A 7-day refresh token sits in an httpOnly cookie that JavaScript cannot read.
-- Login is limited to 5 attempts per minute per IP.
+- Rate limits on every endpoint: 300 requests a minute per user, 120 per IP when not
+  logged in, 5 login attempts a minute per IP; nginx adds a per-IP limit in front.
+- Production: HTTPS only (HSTS), strict security headers and Content-Security-Policy,
+  secrets in AWS Parameter Store, logs in CloudWatch (docs/DEPLOY.md).
 - Uploaded files: PDF, JPG, PNG only, 10 MB maximum, in a private S3 bucket.
 
 ## Phases
@@ -132,7 +137,7 @@ locked. There are no refunds.
 | 8   | Dashboard summary, demo data command                 | Done   |
 | 9   | Front-end foundation                                 | Done   |
 | 10  | Front-end pages, print pages, dashboard              | Done   |
-| 11  | Production Docker, CI/CD, deployment guide, README   |        |
+| 11  | Production Docker, CI/CD, deployment guide, README   | Done   |
 
 ## Not in this project
 

@@ -11,7 +11,14 @@
  */
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 
-export const API_BASE = '/api/v1'
+/**
+ * Where the API lives. In production the app (app.clinic...) and the API (api.clinic...)
+ * are on different addresses, so the build sets VITE_API_URL. In development it is
+ * empty and Vite's proxy forwards /api to Django on the same address.
+ * Both addresses must be on the same site (one domain), or the browser will not send
+ * the SameSite=Strict refresh cookie.
+ */
+export const API_BASE = `${import.meta.env.VITE_API_URL ?? ''}/api/v1`
 
 let accessToken: string | null = null
 let onSessionExpired: (() => void) | null = null

@@ -1,5 +1,13 @@
-# Runs on every push: lint and test the back end and the front end.
-# The deploy jobs (ECR, EC2, S3, CloudFront) are added in phase 11.
+# CI/CD for CliniSar.
+#
+# Every push and pull request: lint and test the back end and the front end.
+# A push to main, after both pass, also deploys:
+#   - back end:  build the Docker image -> push to Amazon ECR -> the EC2 server pulls
+#                it, migrates the database and restarts (deploy/deploy.sh);
+#   - front end: build -> upload to the S3 bucket -> clear the CloudFront cache.
+#
+# Credentials come from GitHub secrets, other settings from GitHub variables
+# (Settings -> Secrets and variables -> Actions). docs/DEPLOY.md lists them.
 name: CI
 
 on:
@@ -79,3 +87,105 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  deploy-backend:
+    name: Deploy back end (ECR + EC2)
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Only one deploy at a time; a newer push waits for the running one.
+    concurrency: deploy-backend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push the image
+        # Tagged with the commit, so every release can be traced (and rolled back).
+        run: |
+          IMAGE="${{ steps.ecr.outputs.registry }}/clinisar-backend:${GITHUB_SHA::7}"
+          docker build -t "$IMAGE" backend
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy on EC2 (pull, migrate, restart)
+        # Runs /opt/clinisar/deploy.sh on the server through AWS Systems Manager, so
+        # the server needs no open SSH port. Waits up to 10 minutes for the result.
+        env:
+          INSTANCE: ${{ vars.EC2_INSTANCE_ID }}
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE" \
+            --document-name AWS-RunShellScript \
+            --comment "CliniSar ${GITHUB_SHA::7}" \
+            --parameters "commands=[\"/opt/clinisar/deploy.sh $IMAGE\"]" \
+            --query Command.CommandId --output text)
+          for _ in $(seq 1 120); do
+            sleep 5
+            STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Pending|InProgress|Delayed) continue ;;
+              Success) echo "Deployed $IMAGE"; exit 0 ;;
+              *) aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+                   --instance-id "$INSTANCE" \
+                   --query '[StandardOutputContent,StandardErrorContent]' --output text
+                 exit 1 ;;
+            esac
+          done
+          echo "The deploy did not finish within 10 minutes."; exit 1
+
+  deploy-frontend:
+    name: Deploy front end (S3 + CloudFront)
+    needs: [backend, frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: deploy-frontend
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Build
+        env:
+          # The API's address, e.g. https://api.clinic.example (no trailing slash).
+          VITE_API_URL: ${{ vars.API_URL }}
+        run: npm run build
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      - name: Upload to S3
+        # assets/ files have a content hash in their names, so browsers may keep them
+        # for a year. index.html (and the icon) must always be checked for a new
+        # version. Old assets are NOT deleted: a tab opened before this release can
+        # still load the pages it has not opened yet.
+        env:
+          BUCKET: ${{ vars.FRONTEND_BUCKET }}
+        run: |
+          aws s3 sync dist/assets "s3://$BUCKET/assets" \
+            --cache-control "public, max-age=31536000, immutable"
+          aws s3 sync dist "s3://$BUCKET" --exclude "assets/*" \
+            --cache-control "no-cache"
+
+      - name: Clear the CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ vars.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"

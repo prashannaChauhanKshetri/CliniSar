@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 from django.conf import settings
 from rest_framework.test import APIClient
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from apps.accounts.models import User
 from apps.accounts.tests.factories import DEFAULT_PASSWORD, UserFactory
@@ -279,3 +280,26 @@ def test_me_tells_a_doctor_their_profile_id(login_as) -> None:
     doctor = DoctorProfileFactory()
     assert login_as(doctor.user).get(ME).data["doctor_profile_id"] == str(doctor.id)
     assert login_as(UserFactory()).get(ME).data["doctor_profile_id"] is None
+
+
+# ---------- rate limits on every endpoint ----------
+
+
+def test_every_endpoint_has_a_rate_limit(settings) -> None:
+    rates = settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
+    assert rates == {"user": "300/min", "anon": "120/min", "login": "5/min"}
+
+
+def test_a_logged_in_user_is_limited_per_user(login_as, monkeypatch) -> None:
+    """Counted per user, so one busy (or broken) screen cannot slow down the others."""
+    monkeypatch.setattr(UserRateThrottle, "rate", "3/min", raising=False)  # small number, same rule
+    busy, other = UserFactory(), UserFactory()
+    client = login_as(busy)
+    assert [client.get(ME).status_code for _ in range(4)] == [200, 200, 200, 429]
+    assert login_as(other).get(ME).status_code == 200
+
+
+def test_refresh_without_login_is_limited_per_ip(api_client, monkeypatch) -> None:
+    monkeypatch.setattr(AnonRateThrottle, "rate", "3/min", raising=False)
+    codes = [api_client.post(REFRESH).status_code for _ in range(4)]
+    assert codes == [401, 401, 401, 429]

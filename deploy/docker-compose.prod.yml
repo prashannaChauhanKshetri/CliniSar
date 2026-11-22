@@ -1,0 +1,50 @@
+# Production on ONE EC2 server: nginx (HTTPS) in front of the Django back end.
+#
+# Lives on the server as /opt/clinisar/docker-compose.prod.yml (see docs/DEPLOY.md).
+# Nothing here keeps data: the database is Amazon RDS and uploaded files are in S3.
+# Values such as ${BACKEND_IMAGE} and ${API_DOMAIN} come from /opt/clinisar/.env,
+# which deploy.sh writes from AWS Parameter Store on every release.
+
+# Both containers send their output to CloudWatch Logs (group /clinisar/production,
+# one stream per container: "backend" and "nginx"). Docker's awslogs driver does this
+# with the EC2 instance's IAM role; no log agent is needed.
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE}
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - static:/app/staticfiles
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /clinisar/production
+        awslogs-create-group: "true"
+        tag: backend
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - static:/srv/static:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      - backend
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-south-1
+        awslogs-group: /clinisar/production
+        awslogs-create-group: "true"
+        tag: nginx
+
+volumes:
+  static:

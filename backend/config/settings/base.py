@@ -134,8 +134,19 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-    # Used by LoginRateThrottle: at most 5 login attempts per minute from one IP address.
-    "DEFAULT_THROTTLE_RATES": {"login": "5/min"},
+    # Rate limits on every endpoint (production keeps the counters in the database, so
+    # all Gunicorn workers share them; see prod.py):
+    # - user: a logged-in user, counted per user. A busy screen makes ~10 calls.
+    # - anon: not logged in (refresh, logout, API docs), counted per IP address. Every
+    #   page load and print tab makes one refresh call, and a whole clinic usually
+    #   shares one internet address, so this is generous: a refused refresh would sign
+    #   the person out. A refresh also needs a valid cookie, so guessing gains nothing.
+    # - login: password attempts per IP address (LoginRateThrottle), against guessing.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {"user": "300/min", "anon": "120/min", "login": "5/min"},
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.StandardPagination",
     "DEFAULT_FILTER_BACKENDS": [
