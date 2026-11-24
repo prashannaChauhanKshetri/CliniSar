@@ -77,6 +77,20 @@ describe('PrintLayout', () => {
     expect(pageRules).toEqual([rule])
   })
 
+  it.each(['A4', 80, 58] as const)(
+    'ends every %s printout with the black CliniSar logo (brand guide)',
+    (paper) => {
+      renderWithProviders(
+        <PrintLayout paper={paper} title="t" ready={false}>
+          x
+        </PrintLayout>,
+      )
+      const logo = screen.getByRole('img', { name: 'CliniSar' })
+      const fills = [...logo.querySelectorAll('g, circle')].map((part) => part.getAttribute('fill'))
+      expect(fills.every((fill) => fill === '#000000')).toBe(true)
+    },
+  )
+
   it('opens the print dialog once, when the data is ready', async () => {
     Object.defineProperty(document, 'fonts', {
       value: { ready: Promise.resolve() },

@@ -284,7 +284,9 @@ in "Needs action" and as a "Check details" badge until someone presses **Details
 ## 11. Printing (phase 10)
 
 Routes under `/print/...` show one document with no sidebar, top bar or buttons and
-open the print dialog once the data has loaded (`print/PrintLayout.tsx`).
+open the print dialog once the data has loaded (`print/PrintLayout.tsx`). Every
+printout ends with the small black CliniSar logo (the brand guide's version for receipts
+and A4 printouts), added once in `PrintLayout`, so all four documents get it.
 
 | Route | Paper | Looks like |
 | ----- | ----- | ---------- |

@@ -94,7 +94,7 @@ your role" page, never the page itself.
 - [ ] A paid bill cannot be changed or cancelled.
 - [ ] Change VAT in Settings, then open an old bill: it is unchanged.
 - [ ] Print the A4 bill, the thermal receipt, a prescription and a lab report:
-      Bikram Sambat dates, "Rs. 1,25,000.00" style amounts, clinic letterhead, one page.
+      Bikram Sambat dates, "Rs. 1,25,000.00" style amounts, clinic letterhead, one page, and the small black CliniSar logo at the end.
 
 ## 9. Uploads
 

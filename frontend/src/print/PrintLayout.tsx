@@ -1,9 +1,11 @@
 /**
  * The frame for every printout: no sidebar, top bar or buttons; its own @page rule
  * (A4 with 15mm margins, or a thermal roll as long as the receipt); and it opens the print dialog once the
- * document is ready.
+ * document is ready. Every printout ends with the black CliniSar logo (brand guide:
+ * black is the version for thermal receipts and A4 printouts).
  */
 import { useEffect, useRef, type ReactNode } from 'react'
+import { Logo } from '../components/Logo'
 import classes from './print.module.css'
 
 export type Paper = 'A4' | 80 | 58
@@ -63,6 +65,11 @@ export function PrintLayout({
       <style ref={styleRef}>{paper === 'A4' ? A4_RULE : thermalRule(paper, 297)}</style>
       <div ref={paperRef} className={`${classes.paper} ${paperClass}`}>
         {children}
+        {/* size 20 keeps the full logo at the guide's 96 px minimum width, even on a
+            58 mm roll. Measured with the receipt, so the roll length includes it. */}
+        <div className={classes.brand}>
+          <Logo variant="black" size={20} />
+        </div>
       </div>
     </div>
   )

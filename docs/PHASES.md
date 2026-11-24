@@ -1237,3 +1237,13 @@ Checks: front-end tests 122 (new: the logo's shapes and allowed colours, the tab
 lint, types and build clean. In headless Chrome: the sign-in page and sidebar show the
 new logo, headings load Plus Jakarta Sans Bold, the wordmark is 108 px wide (minimum 96),
 the favicon and home-screen icon are served, and there were no errors.
+
+### Follow-up: the black logo on printouts (your decision)
+
+- Every printout (A4 bill, thermal receipt, prescription, lab report) now ends with the
+  black CliniSar logo, as the guide asks for receipts and printouts. It is added once in
+  `print/PrintLayout.tsx`, at the guide's smallest full size (96 px wide), so it fits a
+  58 mm roll. The receipt's measured roll length includes it.
+- Checks: 125 front-end tests (new: every paper size ends with the all-black logo); in
+  headless Chrome, a real receipt (roll 100 mm long) and a lab report showed the logo at
+  the end, with no errors.

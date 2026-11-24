@@ -219,3 +219,12 @@ table.results .abnormal {
   border-top: 2px solid #000;
   padding-top: 6px;
 }
+
+/* The black CliniSar logo at the end of every printout, with one arm's width (and
+   more) of clear space above it, as the brand guide asks. */
+.brand {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+  break-inside: avoid;
+}

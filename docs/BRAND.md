@@ -47,7 +47,7 @@ from Google, so they work offline and send no visitor data elsewhere.
 | ------- | ---- | ---- | -------- | ----- |
 | Colour | brand blue | navy | navy | light backgrounds (sign-in card on phones, README) |
 | On brand blue | white | navy | white | the blue sidebar and the blue sign-in panel |
-| Black | black | black | black | thermal receipts, A4 printouts, stamps |
+| Black | black | black | black | thermal receipts, A4 printouts, stamps: the end of every printout (`print/PrintLayout.tsx`) |
 | White | white | white | white | dark photos and dark backgrounds |
 
 ## Clear space and size
