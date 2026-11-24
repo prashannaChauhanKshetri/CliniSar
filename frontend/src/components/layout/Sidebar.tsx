@@ -17,7 +17,7 @@ export function Sidebar({ onClose }: { onClose: () => void }) {
   return (
     <>
       <div className={classes.brand}>
-        <Logo onDark />
+        <Logo variant="onBlue" />
         <CloseButton
           hiddenFrom="lg"
           ml="auto"

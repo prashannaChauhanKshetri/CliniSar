@@ -1,4 +1,5 @@
 import '@fontsource-variable/inter'
+import '@fontsource-variable/plus-jakarta-sans'
 import '@mantine/core/styles.css'
 import '@mantine/notifications/styles.css'
 import './styles/global.css'

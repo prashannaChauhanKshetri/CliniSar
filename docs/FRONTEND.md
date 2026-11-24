@@ -168,13 +168,20 @@ never calculates totals, it only formats them.
 **One theme file**: `src/theme.ts` holds every colour, the font, spacing, radius and
 the default settings of each Mantine component. Pages never hard-code a colour.
 
-- **Colours**: the brief's 13 colours are the anchors. Mantine needs ten steps per
+**Brand** (full guide: [BRAND.md](BRAND.md)): the logo is a medical cross in five parts,
+four brand-blue arms around a navy core (`components/Logo.tsx`, drawn from the same
+48-unit grid as the brand files). The sidebar and sign-in panel use the "on brand blue"
+version; the tab icon is the colour mark; the browser tab reads "Dashboard · CliniSar".
+
+- **Colours**: the brief's 13 colours, plus the brand guide's core navy `#13215E`
+  (logo core and wordmark), are the anchors. Mantine needs ten steps per
   colour (for hover and light backgrounds); each scale is built around its anchor at
   step 6. `cssVariablesResolver` points Mantine's own text, muted-text and border
   colours at the brand tokens, so built-in components match too. Chart colours, in
   order: primary, primary-light, slate, grey (`CHART_COLORS`).
-- **Font**: Inter (bundled with the app, not loaded from Google, so it works offline
-  and leaks no visitor data).
+- **Fonts** (brand guide): Plus Jakarta Sans Bold for page headings and the wordmark,
+  Inter for everything else. Both are bundled with the app, not loaded from Google, so
+  they work offline and leak no visitor data.
 - **Spacing: an 8-point grid.** Every gap and padding is 4, 8, 16, 24 or 32 px
   (`xs`, `sm`, `md`, `lg`, `xl`). Pages have 24 px padding on desktop (16 px on
   phones), cards have 24 px inside and 24 px between them, form fields 16 px apart,

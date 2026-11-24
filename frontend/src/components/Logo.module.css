@@ -1,0 +1,8 @@
+/* The wordmark: Plus Jakarta Sans Bold, letter spacing -3% (brand guide, docs/BRAND.md). */
+.wordmark {
+  font-family: 'Plus Jakarta Sans Variable', 'Inter Variable', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  white-space: nowrap;
+}

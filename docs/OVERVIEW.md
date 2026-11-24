@@ -3,6 +3,7 @@
 A compact guide to the whole project. For the build history, see [PHASES.md](PHASES.md).
 For how each half works in depth: [BACKEND.md](BACKEND.md) and [FRONTEND.md](FRONTEND.md).
 Going live: [DEPLOY.md](DEPLOY.md). Click-through checklist: [MANUAL_TESTS.md](MANUAL_TESTS.md).
+Logo, colours and type: [BRAND.md](BRAND.md).
 
 ## What it is
 

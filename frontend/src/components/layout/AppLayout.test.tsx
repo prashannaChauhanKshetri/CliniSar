@@ -9,7 +9,14 @@ vi.mock('../../api/dashboard', () => ({
 }))
 
 const routes = [
-  { path: '/', element: <AppLayout />, children: [{ index: true, element: <p>Page body</p> }] },
+  {
+    path: '/',
+    element: <AppLayout />,
+    children: [
+      { index: true, element: <p>Page body</p> },
+      { path: 'lab-orders/:id', element: <p>One order</p> },
+    ],
+  },
 ]
 
 describe('AppLayout', () => {
@@ -34,5 +41,15 @@ describe('AppLayout', () => {
     renderWithProviders(null, { routes, auth: fakeAuth({ signOut }) })
     await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }))
     expect(signOut).toHaveBeenCalledOnce()
+  })
+
+  it('names the browser tab after the screen, as in the brand guide', async () => {
+    renderWithProviders(null, {
+      routes,
+      path: '/lab-orders/42',
+      auth: fakeAuth({ user: makeUser('LAB_TECHNICIAN') }),
+    })
+    expect(await screen.findByText('One order')).toBeInTheDocument()
+    expect(document.title).toBe('Lab orders · CliniSar')
   })
 })

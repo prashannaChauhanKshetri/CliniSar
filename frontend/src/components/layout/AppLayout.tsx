@@ -1,6 +1,7 @@
 import { AppShell, Box } from '@mantine/core'
-import { useDisclosure, useHotkeys } from '@mantine/hooks'
-import { Outlet } from 'react-router'
+import { useDisclosure, useDocumentTitle, useHotkeys } from '@mantine/hooks'
+import { Outlet, useLocation } from 'react-router'
+import { screenFor } from '../../routes/navigation'
 import classes from './Sidebar.module.css'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -12,6 +13,9 @@ import { TopBar } from './TopBar'
 export function AppLayout() {
   const [menuOpened, { toggle, close }] = useDisclosure(false)
   useHotkeys([['Escape', close]]) // the drawer always closes with Esc
+  // The browser tab names the screen, as in the brand guide: "Dashboard · CliniSar".
+  const screen = screenFor(useLocation().pathname)
+  useDocumentTitle(screen ? `${screen.label} · CliniSar` : 'CliniSar')
 
   return (
     <AppShell

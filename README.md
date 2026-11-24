@@ -1,4 +1,4 @@
-# CliniSar
+<p><img src="docs/brand/clinisar-logo.png" alt="CliniSar" width="268"></p>
 
 A multi-tenant clinic management system for clinics in Nepal. Many independent clinics
 share one deployment, and each clinic only ever sees its own data. Clinic staff log in;
@@ -107,6 +107,7 @@ docs/         How it works, how it was built, how to deploy and test it
 | [docs/DEPLOY.md](docs/DEPLOY.md) | Setting up AWS by hand, releases, logs, rollback |
 | [docs/MANUAL_TESTS.md](docs/MANUAL_TESTS.md) | The click-through checklist before a demo or release |
 | [docs/PHASES.md](docs/PHASES.md) | What was built in each phase, and why |
+| [docs/BRAND.md](docs/BRAND.md) | Logo, colours, type, and where each is used |
 
 ## Production in short
 

@@ -1211,3 +1211,29 @@ same. The answer was to shape the main screens around the work each person does:
   of 100 (see "Rate limits everywhere" above).
 - Not done: nothing was created in AWS (the brief says to set AWS up by hand). The
   first real deploy is the first push to `main` after following DEPLOY.md.
+
+## Brand: the CliniSar logo and type (your design)
+
+You supplied the brand guide (mark, colours, type, clear space, icons) and the SVG
+files. The app now follows it exactly:
+
+- **Logo** (`components/Logo.tsx`): the five-part cross, four arms around the navy
+  core, drawn on the guide's 48-unit grid (arms 14 x 14, radius 3.5, gaps 3, core 14
+  across), with the wordmark in Plus Jakarta Sans Bold at -3% letter spacing. Mark height
+  = 1.1 x the wordmark size; one arm's width between them. Versions: colour, on brand
+  blue (sidebar and sign-in panel) and black (for print).
+- **Colours**: core navy `#13215E` joins the theme; brand blue, soft blue and ink were
+  already the theme's colours.
+- **Type**: page headings in Plus Jakarta Sans Bold, everything else Inter. The font is
+  the Fontsource package (open font licence), bundled like Inter.
+- **Icons**: your mark is the favicon; your app icon is the phone home-screen icon
+  (180 px PNG, on a full square because phones round the corners).
+- **Browser tab**: "Dashboard · CliniSar", "Patients · CliniSar", "Sign in · CliniSar".
+- **Docs**: `docs/BRAND.md` (the whole guide, plus which file and which code uses
+  what), the SVGs in `docs/brand/`, the logo at the top of the README, and short notes
+  in FRONTEND.md and OVERVIEW.md.
+
+Checks: front-end tests 122 (new: the logo's shapes and allowed colours, the tab title);
+lint, types and build clean. In headless Chrome: the sign-in page and sidebar show the
+new logo, headings load Plus Jakarta Sans Bold, the wordmark is 108 px wide (minimum 96),
+the favicon and home-screen icon are served, and there were no errors.

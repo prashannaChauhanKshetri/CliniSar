@@ -2,25 +2,29 @@
  * The ONE place where CliniSar's look is defined: colours, font, spacing, radius and
  * the default settings of every Mantine component. Pages never hard-code colours.
  *
- * Colours: the 13 brand colours from the brief are the anchors. Mantine needs ten
+ * Colours: the brief's 13 colours plus the brand guide's navy are the anchors. Mantine needs ten
  * light-to-dark steps per colour (for hover, focus and light backgrounds); each
  * scale below is built around its anchor, which sits at step 6 (the shade Mantine
  * uses for filled buttons and badges).
  */
 import { createTheme, type CSSVariablesResolver, type MantineColorsTuple } from '@mantine/core'
 
-/** The brief's colours, by name. Only theme.ts and the charts read these directly. */
+/**
+ * The brief's colours, by name, plus the brand guide's "core navy" (docs/BRAND.md).
+ * Only theme.ts, the charts and the logo read these directly.
+ */
 export const BRAND = {
-  primary: '#3454D1',
+  primary: '#3454D1', // brand blue: the logo's arms, buttons
+  navy: '#13215E', // core navy: the logo's core and wordmark
   primaryDark: '#2A45B0',
   primaryLight: '#5B7CFA',
-  primarySoft: '#E8EDFB',
+  primarySoft: '#E8EDFB', // soft blue: tints, badges
   slate: '#8891C0',
   grey: '#9A9CA5',
   page: '#F5F6FA',
   surface: '#FFFFFF',
   border: '#E5E7EB',
-  text: '#111827',
+  text: '#111827', // ink: body text
   textMuted: '#6B7280',
   success: '#16A34A',
   danger: '#D6246E',
@@ -102,10 +106,12 @@ export const theme = createTheme({
   colors: { primary, success, danger, slate, grey },
   white: BRAND.surface,
   black: BRAND.text,
+  // Brand guide: Inter for everything in the app (tables, forms, labels) ...
   fontFamily: "'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
+  // ... and Plus Jakarta Sans Bold for page headings (and the wordmark).
   headings: {
-    fontFamily: "'Inter Variable', Inter, system-ui, sans-serif",
-    fontWeight: '600',
+    fontFamily: "'Plus Jakarta Sans Variable', 'Inter Variable', system-ui, sans-serif",
+    fontWeight: '700',
     sizes: {
       h1: { fontSize: '28px', lineHeight: '1.3' },
       h2: { fontSize: '22px', lineHeight: '1.35' },

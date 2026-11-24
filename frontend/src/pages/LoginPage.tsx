@@ -19,6 +19,7 @@ import {
   Title,
 } from '@mantine/core'
 import { CalendarDays, FlaskConical, Info, Pill, TriangleAlert } from 'lucide-react'
+import { useDocumentTitle } from '@mantine/hooks'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate, useLocation, useNavigate, type Location } from 'react-router'
@@ -42,6 +43,7 @@ const FEATURES = [
 
 export function LoginPage() {
   const { status, notice, signIn } = useAuth()
+  useDocumentTitle('Sign in · CliniSar')
   const navigate = useNavigate()
   const location = useLocation()
   const [serverError, setServerError] = useState<string | null>(null)
@@ -69,7 +71,7 @@ export function LoginPage() {
     <SimpleGrid cols={{ base: 1, md: 2 }} spacing={0} mih="100vh">
       <Box bg="primary.6" c="white" p="xl" visibleFrom="md">
         <Stack justify="space-between" h="100%" maw={440} mx="auto" py="xl">
-          <Logo onDark size="lg" />
+          <Logo variant="onBlue" size={28} />
           <Stack gap="lg">
             <Title order={1} c="white" fz={32} lh={1.25}>
               Clinic work, all in one place.
