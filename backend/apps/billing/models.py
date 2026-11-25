@@ -81,6 +81,22 @@ class Invoice(TenantModel):
         related_name="invoices_received",
     )
     cancel_reason = models.TextField(blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="invoices_cancelled",
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    # EN: The front desk & pharmacy may cancel a bill without asking, but the admin
+    #     handles the money, so each such cancellation waits here until the admin has
+    #     seen it (bell + dashboard). Bills cancelled by the admin, or automatically with
+    #     a cancelled visit, do not need a review.
+    # NP: Front desk le bill cancel garna paucha (admin sodhnu pardaina), tara admin lai
+    #     tha huna paryo ni. Tesaile yo flag True huncha ra admin ko bell ma dekhincha,
+    #     admin le "Seen" thichepachi False huncha.
+    cancel_needs_review = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-created_at"]

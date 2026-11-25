@@ -19,6 +19,7 @@ import { formatNepalTime } from '../../lib/date'
 import { callingOrder, nepalClock, visitSlot } from '../../lib/queue'
 import { useVisitActions, type VisitActions } from '../appointments/useVisitActions'
 import { VisitRow } from '../appointments/VisitRow'
+import { ReturningSummary } from '../patients/PatientHistory'
 import classes from './Today.module.css'
 import { NeedsAction } from './NeedsAction'
 import { TodayStrip } from './TodayStrip'
@@ -146,6 +147,9 @@ function NextPatient({ visit, actions }: { visit: Appointment; actions: VisitAct
       <Text size="sm" c="dimmed" mt={4}>
         {visit.reason || 'No reason written at the desk.'}
       </Text>
+      {/* EN: Returning patient? Last diagnosis, medicines and any abnormal lab value.
+          NP: Patient feri aako ho bhane last time ke bhako thiyo yahi dekhincha. */}
+      <ReturningSummary patientId={visit.patient} previousVisits={visit.previous_visits} />
       <Group mt="lg" gap="sm">
         <Button leftSection={<ClipboardPlus size={16} />} onClick={() => actions.prescribe(visit)}>
           Write prescription

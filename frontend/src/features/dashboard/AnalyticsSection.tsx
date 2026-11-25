@@ -91,7 +91,7 @@ export function AnalyticsSection() {
         <Skeleton h={340} radius="lg" />
       ) : (
         <Stack gap="lg">
-          <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} spacing="lg">
+          <SimpleGrid cols={{ base: 2, lg: 4 }} spacing={{ base: 'sm', sm: 'lg' }}>
             {cardsFor(query.data, user.role).map((card) => (
               <StatCard key={card.label} {...card} comparedTo={comparedTo} />
             ))}

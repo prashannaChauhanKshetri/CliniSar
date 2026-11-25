@@ -52,10 +52,13 @@ class LabOrderViewSet(AuditLogMixin, TenantViewSet):
     http_method_names = ["get", "post"]
 
     def get_permissions(self):
+        # EN: The lab technician's rules stay as they were; the admin can do every step
+        #     too ("admin can do everything", phase 12).
+        # NP: Lab ko rule same cha, admin le pani sabai step garna milcha (sample, result).
         if self.action == "create":
-            return [(IsDoctor | IsLabTechnician)()]
+            return [(IsDoctor | IsLabTechnician | IsClinicAdmin)()]
         if self.action in ("collect", "complete", "cancel"):
-            return [IsLabTechnician()]
+            return [(IsLabTechnician | IsClinicAdmin)()]
         return [(IsAdminOrStaff | IsDoctor | IsLabTechnician)()]
 
     def get_queryset(self):

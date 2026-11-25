@@ -1,14 +1,17 @@
 /** Shapes of the JSON the CliniSar API sends. Field names match the API exactly. */
 
-export type Role =
-  'SUPER_ADMIN' | 'CLINIC_ADMIN' | 'STAFF' | 'DOCTOR' | 'PHARMACIST' | 'LAB_TECHNICIAN'
+/**
+ * EN: Front desk and pharmacy are ONE role, "STAFF" (phase 12, the client's rule).
+ * NP: Pharmacist bhanne chuttai role aba chaina yar; reception ra pharmacy ko kaam
+ *     eutai STAFF role le garcha. Server ma pani tei rule cha.
+ */
+export type Role = 'SUPER_ADMIN' | 'CLINIC_ADMIN' | 'STAFF' | 'DOCTOR' | 'LAB_TECHNICIAN'
 
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super admin',
   CLINIC_ADMIN: 'Clinic admin',
-  STAFF: 'Front desk',
+  STAFF: 'Front desk & pharmacy',
   DOCTOR: 'Doctor',
-  PHARMACIST: 'Pharmacist',
   LAB_TECHNICIAN: 'Lab technician',
 }
 
@@ -85,4 +88,6 @@ export interface DashboardSummary {
   /** Patients registered at the lab waiting for the front desk to check (admin/staff). */
   patients_to_check: number | null
   unpaid_invoices: number | null
+  /** Bills the front desk & pharmacy cancelled that the admin has not seen (admin only). */
+  cancelled_bills_to_review: number | null
 }

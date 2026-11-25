@@ -51,5 +51,5 @@ class StockMovementFactory(factory.django.DjangoModelFactory):
     change = 100
     reason = StockMovement.Reason.PURCHASE
     created_by = factory.SubFactory(
-        UserFactory, role=User.Role.PHARMACIST, clinic=factory.SelfAttribute("..clinic")
+        UserFactory, role=User.Role.STAFF, clinic=factory.SelfAttribute("..clinic")
     )

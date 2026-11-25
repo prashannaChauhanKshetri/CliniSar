@@ -33,6 +33,13 @@ export function alertsFrom(summary: DashboardSummary | undefined, role: Role): A
       '/patients?needs_review=true',
     ],
     [summary.unpaid_invoices, 'bill is unpaid', 'bills are unpaid', '/invoices?status=UNPAID'],
+    // Admin only (null for others): the front desk cancelled a bill. NP: admin lai khabar.
+    [
+      summary.cancelled_bills_to_review,
+      'bill was cancelled by the front desk',
+      'bills were cancelled by the front desk',
+      '/invoices?cancel_needs_review=true',
+    ],
   ]
   return candidates
     .filter(([count, , , path]) => count && canOpen(role, path.split('?')[0]))

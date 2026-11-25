@@ -18,16 +18,26 @@ const labels = (summary: DashboardSummary, role: Parameters<typeof cardsFor>[1])
   cardsFor(summary, role).map((c) => c.label)
 
 describe('dashboard cards per role', () => {
-  it('admin and staff: patients, doctors, appointments, earnings', () => {
+  it('admin: patients, doctors, appointments, earnings', () => {
     expect(labels(full, 'CLINIC_ADMIN')).toEqual([
       'Total patients',
       'Doctors',
       'Appointments',
       'Earnings (without VAT)',
     ])
-    const earnings = cardsFor(full, 'STAFF')[3]
+    const earnings = cardsFor(full, 'CLINIC_ADMIN')[3]
     expect(earnings.value).toBe('Rs. 3,950.00')
     expect(earnings.changePercent).toBe(3.9)
+  })
+
+  it('front desk & pharmacy: the work, no earnings (the admin handles the money)', () => {
+    const deskView = { ...full, earnings: null, vat_collected: null }
+    expect(labels(deskView, 'STAFF')).toEqual([
+      'Total patients',
+      'Appointments',
+      'Unpaid bills',
+      'Low-stock medicines',
+    ])
   })
 
   it('doctor: no money cards, because the server hides money from doctors', () => {
@@ -44,22 +54,6 @@ describe('dashboard cards per role', () => {
       'Lab orders waiting',
       'Doctors',
     ])
-  })
-
-  it('pharmacist: money and stock', () => {
-    const pharmacyView = {
-      ...full,
-      total_patients: null,
-      appointments: null,
-      pending_lab_orders: null,
-    }
-    expect(labels(pharmacyView, 'PHARMACIST')).toEqual([
-      'Earnings (without VAT)',
-      'VAT collected',
-      'Low-stock medicines',
-      'Expiring or expired batches',
-    ])
-    expect(cardsFor(pharmacyView, 'PHARMACIST')[3].value).toBe(2)
   })
 
   it('lab technician: money and lab work', () => {

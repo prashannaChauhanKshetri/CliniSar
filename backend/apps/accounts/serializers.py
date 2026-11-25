@@ -101,9 +101,9 @@ def check_password_on_create(serializer: serializers.Serializer, data: dict) -> 
 
 
 class StaffSerializer(serializers.ModelSerializer):
-    """A non-doctor login of the clinic: front-desk staff, pharmacist or lab technician."""
+    """A non-doctor login of the clinic: front desk & pharmacy, or lab technician."""
 
-    STAFF_ROLES = [User.Role.STAFF, User.Role.PHARMACIST, User.Role.LAB_TECHNICIAN]
+    STAFF_ROLES = [User.Role.STAFF, User.Role.LAB_TECHNICIAN]
 
     # Only these roles: doctors are created at doctors/, admins by the super admin.
     role = serializers.ChoiceField(choices=STAFF_ROLES)

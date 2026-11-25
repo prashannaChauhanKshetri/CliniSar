@@ -1,9 +1,19 @@
 /** One visit in a queue: time or queue number, patient, reason, and quick actions. */
-import { ActionIcon, Anchor, Group, Menu, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import {
+  ActionIcon,
+  Anchor,
+  Badge,
+  Group,
+  Menu,
+  Text,
+  Tooltip,
+  UnstyledButton,
+} from '@mantine/core'
 import { Check, ClipboardPlus, FlaskConical, MoreHorizontal, X } from 'lucide-react'
 import { Link } from 'react-router'
 import type { Appointment } from '../../api/resources'
 import { StatusBadge } from '../../components/StatusBadge'
+import { visitLabel } from '../../lib/history'
 import { visitSlot } from '../../lib/queue'
 import classes from './Queue.module.css'
 import type { VisitActions } from './useVisitActions'
@@ -21,6 +31,8 @@ export function VisitRow({
   next?: boolean
 }) {
   const waiting = visit.status === 'BOOKED'
+  // NP: Patient pahila aaisakeko cha bhane "3rd visit" jasto sano badge, doctor lai thaha hos.
+  const returning = visitLabel(visit.previous_visits)
   return (
     <div className={classes.row} data-next={next || undefined} data-done={!waiting || undefined}>
       <span
@@ -40,10 +52,19 @@ export function VisitRow({
         >
           {visit.patient_name}
         </Anchor>
-        {visit.reason && (
-          <Text size="xs" c="dimmed" truncate="end">
-            {visit.reason}
-          </Text>
+        {(returning || visit.reason) && (
+          <Group gap={6} wrap="nowrap" className={classes.meta}>
+            {returning && (
+              <Badge size="xs" variant="light" style={{ flexShrink: 0 }}>
+                {returning}
+              </Badge>
+            )}
+            {visit.reason && (
+              <Text size="xs" c="dimmed" truncate="end">
+                {visit.reason}
+              </Text>
+            )}
+          </Group>
         )}
       </div>
       {waiting ? (

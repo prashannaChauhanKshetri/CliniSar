@@ -23,7 +23,8 @@ def in_days(days: int) -> str:
 
 @pytest.fixture
 def pharmacist() -> User:
-    return UserFactory(role=Role.PHARMACIST)
+    """Whoever runs the pharmacy: since phase 12, the front desk & pharmacy role."""
+    return UserFactory(role=Role.STAFF)
 
 
 def stock(medicine, pharmacist, batch_number, quantity, expires_in) -> MedicineBatch:

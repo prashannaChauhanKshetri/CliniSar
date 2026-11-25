@@ -1247,3 +1247,134 @@ the favicon and home-screen icon are served, and there were no errors.
 - Checks: 125 front-end tests (new: every paper size ends with the all-black logo); in
   headless Chrome, a real receipt (roll 100 mm long) and a lab report showed the logo at
   the end, with no errors.
+
+## Phase 12 - The client's role rules, doctor history, clean phone screens
+
+Each change below has a short English explanation and a casual Nepali one ("NP"),
+the same style as the comments in the code.
+
+### 1. Front desk and pharmacy are one role
+
+- **What**: the `PHARMACIST` role is gone. `STAFF` is now called **"Front desk &
+  pharmacy"**: patients, the queue and appointments, documents, dispensing, stock,
+  and bills.
+- **Old logins**: migration `accounts/0005_merge_pharmacist_into_front_desk` turned
+  every existing pharmacist login into this role, with the same password.
+- **Screens**: the old pharmacist dashboard was folded into the front desk "Today"
+  screen as **Waiting for medicines** (`WaitingForMedicines.tsx`).
+- NP: Client le bhaneko, reception ra pharmacy eutai manche le garcha. Tesaile duita
+  role ko satta eutai rakhyo, rules pani eutai thau ma. Purano pharmacist login pani
+  chalcha, aba "Front desk & pharmacy" bhayera.
+
+### 2. The admin can do everything and handles the money
+
+- **Everything**: the admin can now also dispense and do every lab step (order,
+  sample, results). The one exception is writing prescriptions, which stays with
+  doctors because it needs a doctor's licence.
+- **Money**:
+  - The front desk & pharmacy takes payment, gives discounts and **cancels bills
+    without asking**.
+  - Every such cancellation is flagged for the admin: the bell says "1 bill was
+    cancelled by the front desk", the bills list has a "to review" switch, and the
+    bill shows who cancelled it and when, with a **Seen** button for the admin.
+  - Cancellations by the admin, or automatic ones (a cancelled visit cancels its
+    unpaid bill), are not flagged.
+  - Earnings and VAT figures are shown to the admin only. The lab still sees its own,
+    as before.
+- **Files**: `billing/services.py: cancel_invoice`, `mark_cancel_reviewed`; the new
+  invoice fields `cancelled_by`, `cancelled_at` and `cancel_needs_review` (migration
+  `billing/0003`); `dashboard/services.py` (`show_money`, `cancelled_bills_to_review`).
+- NP: Front desk le bill cancel garna paucha, admin sodhnu pardaina. Tara admin lai
+  bell ma khabar jancha, ani admin le "Seen" thichepachi hatcha. Kati kamayo bhanne
+  figure admin le matra dekhcha.
+
+### 3. Doctor: history of returning patients
+
+- **API**: `GET patients/<id>/history/` (`records/history.py`) returns:
+  - the number of visits, with the first and last;
+  - the last 5 visits with their diagnoses;
+  - the medicines of the last prescription;
+  - every numeric lab value over time.
+
+  One request, a few queries. The same rule as the rest of the patient pages applies:
+  a doctor only reaches their own patients. The lab cannot see it.
+- **Every visit** now carries `previous_visits` (one subquery for the whole list), so
+  the queue shows "2nd visit", "7th visit"...
+- **Screens**:
+  - The patient page has a **History** card. Values measured more than once get a
+    chart with the normal range as dashed lines; one-off values are a short list.
+  - The doctor's **Next patient** card says, for example, "7th visit · Random Blood
+    Sugar: 162 mg/dl · Last time: Viral fever · on Paracetamol 500mg, ORS 21g".
+- **Demo**: `seed_demo` gives one patient two earlier blood-sugar results (210 → 185 →
+  162), so the chart has something to show.
+- NP: Patient feri feri aaucha bhane doctor lai pahila ke bhako thiyo, ke ausadhi
+  khadai cha, sugar badhyo ki ghatyo, ekai najar ma dekhincha. Graph ma dashed line =
+  normal range.
+
+### 4. The lab
+
+Unchanged, as asked. (It cannot see the new history panel, because diagnoses are not
+the lab's business.)
+
+### 5. Clean phone screens
+
+Every main screen of every role was checked at 390 px wide, measuring anything wider
+than the screen. Nothing overflowed. The following were tidied:
+
+- **Dashboard**:
+  - the figure strip's dividers no longer leave a stray line;
+  - clinic figures are a 2 x 2 grid with smaller padding (the icon tiles are hidden on
+    phones).
+- **Detail cards** (patient, bill...) use two columns.
+- **Patient tabs** slide sideways instead of wrapping.
+- **Dates** never break in the middle ("2083 Mangsir / 9").
+- **Lab results** on the history card: the range and date sit on a second line.
+- NP: Phone ma sabai screen check garyo, kei pani screen bhanda chaudai bhayena. Ani
+  spacing ra layout ali sapha banako.
+
+### 6. Comments for you
+
+Important code now explains **why** in English plus a short "NP:" line in casual
+Nepali, for example:
+
+- `common/views.py` (TenantViewSet: tenant isolation);
+- `api/client.ts` (the single shared token refresh);
+- `billing/models.py` (the cancel review flag);
+- `records/history.py` (the history panel);
+- `lib/history.ts` (the visit label, chart scale);
+- `features/dashboard/FrontDeskToday.tsx`;
+- and the permission changes.
+
+### Checks
+
+- **Back end**: all tests pass. There are new tests for:
+  - the cancel review (front desk vs admin cancels, automatic cancels, mark-reviewed
+    for the admin only, the filter);
+  - the front desk seeing no money;
+  - the admin's review count;
+  - the admin doing lab steps and dispensing;
+  - the history (diagnoses, medicines, a three-point trend, text results left out, an
+    empty history, the doctor's row rule, the lab refused);
+  - `previous_visits` in lists and on one visit;
+  - the old pharmacist role refused for new logins;
+  - the seeded trend.
+
+  Tenant isolation also covers the two new actions.
+- **Front end**: 132 tests: visit labels, range parsing, chart scale, the admin's
+  cancellation alert, front desk cards without money, the merged role's menu.
+- **In the browser**:
+  - the old `pharmacist@sunrise.demo` login opened as "Front desk & pharmacy", with no
+    earnings;
+  - a front-desk cancellation reached the admin's bell and review list, and "Seen"
+    cleared it;
+  - Dr. Sunita saw Krishna's history with the blood-sugar chart;
+  - the next-patient card showed "7th visit" and the summary;
+  - 27 phone screens across all roles had no overflow and no console errors.
+
+### Files to read first
+
+1. `backend/apps/records/history.py` - the history panel's data.
+2. `backend/apps/billing/services.py` - `cancel_invoice` and the review flag.
+3. `backend/apps/dashboard/services.py` - `scope_for` (who sees money).
+4. `frontend/src/features/patients/PatientHistory.tsx` and `LabTrendChart.tsx`.
+5. `frontend/src/features/dashboard/FrontDeskToday.tsx`.

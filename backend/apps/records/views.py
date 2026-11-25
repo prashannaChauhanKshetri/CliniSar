@@ -7,7 +7,7 @@ from rest_framework.response import Response
 
 from apps.accounts.models import User
 from apps.common.audit import Action, AuditLogMixin
-from apps.common.permissions import IsAdminOrStaff, IsDoctor, IsPharmacist, IsStaff, ReadOnly
+from apps.common.permissions import IsAdminOrStaff, IsDoctor, ReadOnly
 from apps.common.views import TenantViewSet
 from apps.pharmacy import services as pharmacy
 
@@ -26,7 +26,7 @@ def only_own_patients(queryset, user, patient_field: str):
 
 
 class PrescriptionViewSet(AuditLogMixin, TenantViewSet):
-    """prescriptions/: list, create (doctor), retrieve, and dispense/ (pharmacist, front desk)."""
+    """prescriptions/: list, create (doctor), retrieve, and dispense/ (admin, front desk)."""
 
     queryset = Prescription.objects.select_related(
         "appointment__patient", "appointment__doctor__user", "dispensed_by"
@@ -40,8 +40,12 @@ class PrescriptionViewSet(AuditLogMixin, TenantViewSet):
         if self.action == "create":
             return [IsDoctor()]
         if self.action == "dispense":
-            return [(IsPharmacist | IsStaff)()]  # the front desk may dispense too
-        return [(IsAdminOrStaff | IsDoctor | IsPharmacist)()]
+            # EN: Only a doctor writes a prescription (it needs a licence); the admin and
+            #     the front desk & pharmacy hand the medicines over.
+            # NP: Prescription lekhne kaam doctor ko matra (license chainchha), dispense
+            #     chai admin ra front desk/pharmacy le garna milcha.
+            return [IsAdminOrStaff()]
+        return [(IsAdminOrStaff | IsDoctor)()]
 
     def get_queryset(self):
         """Row-level rule: a doctor sees the prescriptions of their own patients."""

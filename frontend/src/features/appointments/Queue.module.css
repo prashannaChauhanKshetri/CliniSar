@@ -68,3 +68,8 @@
   border-bottom: 1px solid var(--mantine-color-default-border);
   margin-bottom: 4px;
 }
+
+/* The badge + reason line under the name; the reason gives way on narrow screens. */
+.meta {
+  min-width: 0;
+}

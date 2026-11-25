@@ -28,7 +28,12 @@ class IsClinicAdmin(RolePermission):
 
 
 class IsStaff(RolePermission):
-    """Only front-desk staff (the STAFF role, not Django's is_staff flag)."""
+    """Front desk & pharmacy (the STAFF role, not Django's is_staff flag).
+
+    EN: Since phase 12 this one role also does the pharmacist's work (dispensing, stock).
+    NP: Yo role le reception ra pharmacy dubai kaam garcha. "is_staff" (Django admin ko
+        flag) sanga confuse nagarnu hai, tyo arkai kura ho.
+    """
 
     allowed_roles = (Role.STAFF,)
 
@@ -37,12 +42,6 @@ class IsDoctor(RolePermission):
     """Only doctors."""
 
     allowed_roles = (Role.DOCTOR,)
-
-
-class IsPharmacist(RolePermission):
-    """Only pharmacists."""
-
-    allowed_roles = (Role.PHARMACIST,)
 
 
 class IsLabTechnician(RolePermission):

@@ -48,7 +48,7 @@ ENDPOINTS = [
     Endpoint(
         "/api/v1/patients/",
         lambda clinic: PatientProfileFactory(clinic=clinic),
-        detail_requests=[*EDITABLE, ("post", "mark-checked/")],
+        detail_requests=[*EDITABLE, ("post", "mark-checked/"), ("get", "history/")],
     ),
     Endpoint(
         "/api/v1/appointments/",
@@ -58,13 +58,18 @@ ENDPOINTS = [
     Endpoint(
         "/api/v1/invoices/",
         lambda clinic: InvoiceFactory(clinic=clinic),
-        detail_requests=[("get", ""), ("post", "pay/"), ("post", "cancel/")],
+        detail_requests=[
+            ("get", ""),
+            ("post", "pay/"),
+            ("post", "cancel/"),
+            ("post", "mark-reviewed/"),
+        ],
     ),
     Endpoint(
         "/api/v1/prescriptions/",
         lambda clinic: PrescriptionFactory(clinic=clinic),
         detail_requests=[("get", ""), ("post", "dispense/")],
-        role=User.Role.PHARMACIST,
+        role=User.Role.STAFF,
     ),
     Endpoint(
         "/api/v1/medicines/",

@@ -62,6 +62,11 @@ api.interceptors.request.use((config) => {
  * If several requests fail at the same moment they all wait for ONE refresh. This
  * matters: the server rotates refresh tokens, so a second parallel refresh would use
  * an already-used token and log the user out.
+ *
+ * NP: Dashboard kholda 10 ota request ekai choti 401 aaucha. Sabai le chuttai refresh
+ *     garyo bhane pahilo le token use garcha, baki ko "purano token" bhayera logout
+ *     huncha. Tesaile `refreshInFlight` ma eutai Promise rakhera sabai lai parkhauna
+ *     lagaucha. Yo interview ma sodhna sakcha hai!
  */
 export function refreshAccessToken(): Promise<string> {
   refreshInFlight ??= authClient

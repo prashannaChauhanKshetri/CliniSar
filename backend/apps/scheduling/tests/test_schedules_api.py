@@ -60,8 +60,8 @@ def test_staff_can_read_but_not_change_schedules(login_as) -> None:
     assert client.post(schedules_url(doctor), MORNING).status_code == 403
 
 
-@pytest.mark.parametrize("role", [Role.PHARMACIST, Role.LAB_TECHNICIAN])
-def test_pharmacy_and_lab_cannot_see_schedules_or_slots(login_as, role) -> None:
+@pytest.mark.parametrize("role", [Role.LAB_TECHNICIAN])
+def test_lab_cannot_see_schedules_or_slots(login_as, role) -> None:
     doctor = DoctorProfileFactory()
     client = login_as(UserFactory(clinic=doctor.user.clinic, role=role))
     assert client.get(schedules_url(doctor)).status_code == 403

@@ -66,10 +66,9 @@ Inside each Django app: `models.py` (tables), `serializers.py` (JSON in and out)
 | Role           | Can do                                                                  |
 | -------------- | ----------------------------------------------------------------------- |
 | SUPER_ADMIN    | Django admin only: create clinics and their first admin                 |
-| CLINIC_ADMIN   | Clinic settings and VAT, staff, doctors, departments; everything STAFF can |
-| STAFF          | Patients, appointments, documents, all invoices; also the pharmacy and dispensing (small clinics) |
-| DOCTOR         | Own schedule and appointments, prescriptions and lab orders             |
-| PHARMACIST     | Medicines, batches, stock, dispensing, PHARMACY invoices                |
+| CLINIC_ADMIN   | Everything except writing prescriptions: settings and VAT, staff, doctors, departments, every front desk, pharmacy and lab step. The only one who sees earnings, and reviews bills the front desk cancelled |
+| STAFF          | "Front desk & pharmacy" (one role since phase 12): patients, queue and appointments, documents, dispensing, stock, bills (take payment, discount, cancel: the admin is told) |
+| DOCTOR         | Own schedule and queue, prescriptions, lab orders; each patient's history and lab trends |
 | LAB_TECHNICIAN | Lab tests, lab orders, LAB invoices; registers walk-in lab patients (front desk checks them) |
 
 ## Main flows
@@ -83,7 +82,7 @@ Inside each Django app: `models.py` (tables), `serializers.py` (JSON in and out)
 Both create a CONSULTATION invoice at the doctor's fee.
 
 **Prescription and pharmacy.** The doctor writes a prescription for their own
-appointment. The pharmacist dispenses it: stock is taken from the batch that expires
+appointment. The front desk & pharmacy (or the admin) dispenses it: stock is taken from the batch that expires
 first, moving to the next batch if needed. Expired batches are never used. If stock is
 short, nothing changes and the API returns 409. Dispensing creates a PHARMACY invoice.
 
@@ -139,6 +138,7 @@ locked. There are no refunds.
 | 9   | Front-end foundation                                 | Done   |
 | 10  | Front-end pages, print pages, dashboard              | Done   |
 | 11  | Production Docker, CI/CD, deployment guide, README   | Done   |
+| 12  | Client's role rules, doctor history, phone screens   | Done   |
 
 ## Not in this project
 

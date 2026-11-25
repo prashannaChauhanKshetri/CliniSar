@@ -44,7 +44,7 @@ describe('route guards', () => {
     renderWithProviders(null, {
       routes,
       path: '/medicines',
-      auth: fakeAuth({ user: makeUser('PHARMACIST') }),
+      auth: fakeAuth({ user: makeUser('STAFF') }),
     })
     expect(await screen.findByText('Medicines page')).toBeInTheDocument()
   })

@@ -1,4 +1,4 @@
-/** One prescription: what was prescribed, and dispensing it (pharmacist). */
+/** One prescription: what was prescribed, and dispensing it (front desk & pharmacy, admin). */
 import { Alert, Button, Card, Group, Skeleton, Stack, Table, Text } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { PackageCheck, Printer } from 'lucide-react'

@@ -65,6 +65,11 @@ class Scope:
     invoices: QuerySet | None
     lab_orders: QuerySet | None
     show_stock: bool
+    # EN: Earnings and VAT. The admin handles the clinic's money (phase 12), so the front
+    #     desk & pharmacy no longer see them; the lab still sees its own, as before.
+    # NP: Kati kamayo bhanne figure admin le matra herne. Front desk le unpaid bill ko
+    #     count chai dekhcha, kina bhane paisa usle nai uthauncha.
+    show_money: bool = True
 
 
 def scope_for(user: User) -> Scope:
@@ -75,8 +80,12 @@ def scope_for(user: User) -> Scope:
     invoices = Invoice.objects.filter(clinic=clinic)
     lab_orders = LabOrder.objects.filter(clinic=clinic)
 
-    if user.role in (Role.CLINIC_ADMIN, Role.STAFF):
+    if user.role == Role.CLINIC_ADMIN:
         return Scope(appointments, patients, invoices, lab_orders, show_stock=True)
+    if user.role == Role.STAFF:
+        return Scope(
+            appointments, patients, invoices, lab_orders, show_stock=True, show_money=False
+        )
     if user.role == Role.DOCTOR:
         own_patients = appointments.filter(doctor__user=user).values("patient")
         return Scope(
@@ -86,8 +95,6 @@ def scope_for(user: User) -> Scope:
             lab_orders.filter(patient__in=own_patients),
             show_stock=False,
         )
-    if user.role == Role.PHARMACIST:
-        return Scope(None, None, invoices.filter(source=Invoice.Source.PHARMACY), None, True)
     if user.role == Role.LAB_TECHNICIAN:
         return Scope(None, None, invoices.filter(source=Invoice.Source.LAB), lab_orders, False)
     return Scope(None, None, None, None, show_stock=False)
@@ -223,7 +230,10 @@ def summary(user: User, range_name: str) -> dict:
     today = timezone.localdate()
     current, previous = periods(range_name, today)
     scope = scope_for(user)
-    earnings, vat_collected = compare_money(scope.invoices, current, previous)
+    earnings, vat_collected = compare_money(
+        scope.invoices if scope.show_money else None, current, previous
+    )
+    is_admin = user.role == Role.CLINIC_ADMIN
     pending_lab = Q(status__in=[LabOrder.Status.ORDERED, LabOrder.Status.SAMPLE_COLLECTED])
 
     return {
@@ -259,5 +269,11 @@ def summary(user: User, range_name: str) -> dict:
         else None,
         "unpaid_invoices": scope.invoices.filter(status=Invoice.Status.UNPAID).count()
         if scope.invoices is not None
+        else None,
+        # Bills the front desk & pharmacy cancelled that the admin has not seen yet.
+        "cancelled_bills_to_review": Invoice.objects.filter(
+            clinic=user.clinic, cancel_needs_review=True
+        ).count()
+        if is_admin
         else None,
     }

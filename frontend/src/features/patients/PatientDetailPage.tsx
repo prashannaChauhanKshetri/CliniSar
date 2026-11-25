@@ -27,6 +27,7 @@ import { canOpen } from '../../routes/navigation'
 import { useAuth } from '../auth/useAuth'
 import { UploadDocumentModal } from '../documents/UploadDocumentModal'
 import { PatientForm } from './PatientForm'
+import { PatientHistory } from './PatientHistory'
 
 export function PatientDetailPage() {
   const { id = '' } = useParams()
@@ -114,9 +115,12 @@ export function PatientDetailPage() {
             ]}
           />
         </Card>
+        {/* Doctors, admin and front desk: what happened before (the lab sees no diagnoses). */}
+        {user.role !== 'LAB_TECHNICIAN' && <PatientHistory patientId={id} />}
         <Card p={0}>
           <Tabs defaultValue="visits" keepMounted={false}>
-            <Tabs.List px="lg" pt="sm">
+            {/* nowrap + scroll: on a phone the tabs slide sideways instead of wrapping */}
+            <Tabs.List px="lg" pt="sm" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
               <Tabs.Tab value="visits">Visits</Tabs.Tab>
               {can('/prescriptions') && <Tabs.Tab value="prescriptions">Prescriptions</Tabs.Tab>}
               {can('/lab-orders') && <Tabs.Tab value="lab">Lab</Tabs.Tab>}

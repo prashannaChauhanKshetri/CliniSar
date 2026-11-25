@@ -1,5 +1,7 @@
 """Endpoints for doctor schedules, free slots and appointments. Rules live in services.py."""
 
+from django.db.models import Count, OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import serializers, status
@@ -94,8 +96,22 @@ class AppointmentViewSet(AuditLogMixin, TenantViewSet):
         return [(IsAdminOrStaff | IsDoctor)()]
 
     def get_queryset(self):
-        """Row-level rule: a doctor only sees their own appointments."""
-        queryset = super().get_queryset()
+        """Row-level rule: a doctor only sees their own appointments.
+
+        Each visit also carries `previous_visits` (the patient's completed visits with
+        any doctor, this one left out), counted in the same query for the whole list, so
+        the queue can mark returning patients without one extra query per row.
+        """
+        earlier = (
+            Appointment.objects.filter(
+                patient=OuterRef("patient"), status=Appointment.Status.COMPLETED
+            )
+            .exclude(pk=OuterRef("pk"))
+            .values("patient")
+            .annotate(total=Count("id"))
+            .values("total")
+        )
+        queryset = super().get_queryset().annotate(previous_visits=Coalesce(Subquery(earlier), 0))
         user = self.request.user
         if user.is_authenticated and user.role == User.Role.DOCTOR:
             queryset = queryset.filter(doctor__user=user)

@@ -1,13 +1,25 @@
+/*
+ * The strip's dividers are the 1px gaps of the grid showing its border-coloured
+ * background. Unlike border-right on each figure, this never leaves a stray line at the
+ * edge when the figures wrap onto two rows on a phone.
+ * NP: Mobile ma 2 column huda border ulto-sulto dekhinthyo; gap ko trick le line milcha.
+ */
+.strip {
+  background: var(--mantine-color-default-border);
+}
+
 .figure {
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: 16px 24px;
-  border-right: 1px solid var(--mantine-color-default-border);
+  background: var(--mantine-color-body);
 }
 
-.figure:last-child {
-  border-right: 0;
+@media (max-width: 48em) {
+  .figure {
+    padding: 12px 16px;
+  }
 }
 
 .figure:not(:disabled):hover {

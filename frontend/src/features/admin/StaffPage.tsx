@@ -1,4 +1,4 @@
-/** Staff logins (front desk, pharmacist, lab technician), managed by the clinic admin. */
+/** Staff logins (front desk & pharmacy, lab technician), managed by the clinic admin. */
 import {
   ActionIcon,
   Button,
@@ -26,7 +26,7 @@ import { fullName, showServerFieldErrors } from '../../lib/forms'
 import { notifyError, notifySuccess } from '../../lib/notify'
 import { useListState } from '../../lib/useListState'
 
-const ROLE_OPTIONS = (['STAFF', 'PHARMACIST', 'LAB_TECHNICIAN'] as StaffRole[]).map((role) => ({
+const ROLE_OPTIONS = (['STAFF', 'LAB_TECHNICIAN'] as StaffRole[]).map((role) => ({
   value: role,
   label: ROLE_LABELS[role],
 }))

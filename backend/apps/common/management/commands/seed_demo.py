@@ -20,7 +20,7 @@ from apps.billing import services as billing
 from apps.billing.models import Invoice
 from apps.clinics.models import Clinic, Department
 from apps.lab import services as lab
-from apps.lab.models import LabTest
+from apps.lab.models import LabOrder, LabTest
 from apps.pharmacy import services as pharmacy
 from apps.pharmacy.models import Medicine, MedicineBatch
 from apps.records import services as records
@@ -307,7 +307,6 @@ def seed_clinic(details: dict) -> Clinic:
     slug = clinic.slug
     make_user(clinic, f"admin@{slug}.demo", User.Role.CLINIC_ADMIN, "Clinic", "Admin")
     staff = make_user(clinic, f"staff@{slug}.demo", User.Role.STAFF, "Front", "Desk")
-    make_user(clinic, f"pharmacist@{slug}.demo", User.Role.PHARMACIST, "Pharmacy", "Counter")
     make_user(clinic, f"lab@{slug}.demo", User.Role.LAB_TECHNICIAN, "Lab", "Technician")
 
     doctors = [make_doctor(clinic, *row) for row in DOCTORS]
@@ -367,7 +366,8 @@ def make_patient(clinic, first, last, age, gender, address, phone) -> PatientPro
 
 def seed_pharmacy(clinic: Clinic) -> None:
     """Medicines with batches, then prescriptions for past visits (most dispensed)."""
-    pharmacist = clinic.users.get(role=User.Role.PHARMACIST)
+    # The front desk & pharmacy role buys stock and hands out medicines.
+    pharmacist = clinic.users.get(role=User.Role.STAFF)
     for name, generic, strength, form, price, reorder, batches in MEDICINES:
         medicine = Medicine.objects.create(
             clinic=clinic,
@@ -483,6 +483,26 @@ def seed_lab(clinic: Clinic) -> None:
     lab.create_lab_order(
         clinic=clinic, tests=[tests["LFT"]], ordered_by=visit.doctor.user, appointment=visit
     )
+
+    # 4. A returning diabetic patient: blood sugar checked twice before (phase 12), so
+    #    the doctor's history panel has a trend to draw: 210 -> 185 -> 162 (today's order).
+    #    NP: Doctor ko history panel ma graph dekhauna, eutai patient ko RBS 3 choti.
+    sugar = tests["RBS"].parameters.get()
+    for value, days_ago in (("210", 60), ("185", 30)):
+        earlier = lab.create_lab_order(
+            clinic=clinic, tests=[tests["RBS"]], ordered_by=lab_tech, patient=done.patient
+        )
+        lab.collect_sample(earlier, user=lab_tech)
+        lab.complete_lab_order(
+            earlier,
+            user=lab_tech,
+            results=[{"parameter": sugar.pk, "value": value, "flag": "ABNORMAL"}],
+        )
+        billing.pay_invoice(earlier.invoice, payment_method="CASH", received_by=staff)
+        back_then = timezone.now() - datetime.timedelta(days=days_ago)
+        LabOrder.objects.filter(pk=earlier.pk).update(
+            created_at=back_then, collected_at=back_then, completed_at=back_then
+        )
 
 
 def demo_results(order) -> list[dict]:

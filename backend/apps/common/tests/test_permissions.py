@@ -16,7 +16,6 @@ EXPECTED = {
     permissions.IsClinicAdmin: {Role.CLINIC_ADMIN},
     permissions.IsStaff: {Role.STAFF},
     permissions.IsDoctor: {Role.DOCTOR},
-    permissions.IsPharmacist: {Role.PHARMACIST},
     permissions.IsLabTechnician: {Role.LAB_TECHNICIAN},
     permissions.IsAdminOrStaff: {Role.CLINIC_ADMIN, Role.STAFF},
 }

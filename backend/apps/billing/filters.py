@@ -23,4 +23,5 @@ class InvoiceFilter(django_filters.FilterSet):
             "appointment",
             "prescription",
             "lab_order",
+            "cancel_needs_review",  # ?cancel_needs_review=true: cancellations to review
         ]

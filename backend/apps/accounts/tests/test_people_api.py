@@ -31,7 +31,7 @@ def admin() -> User:
 # ---------- staff ----------
 
 
-@pytest.mark.parametrize("role", ["STAFF", "PHARMACIST", "LAB_TECHNICIAN"])
+@pytest.mark.parametrize("role", ["STAFF", "LAB_TECHNICIAN"])
 def test_admin_can_create_each_staff_role(login_as, admin, role) -> None:
     response = login_as(admin).post(
         STAFF,
@@ -93,7 +93,7 @@ def test_staff_email_must_be_unique(login_as, admin) -> None:
 
 
 def test_staff_list_hides_admins_and_doctors(login_as, admin) -> None:
-    staff = UserFactory(clinic=admin.clinic, role=Role.PHARMACIST)
+    staff = UserFactory(clinic=admin.clinic, role=Role.STAFF)
     DoctorProfileFactory(clinic=admin.clinic)
 
     response = login_as(admin).get(STAFF)
@@ -102,12 +102,28 @@ def test_staff_list_hides_admins_and_doctors(login_as, admin) -> None:
 
 
 def test_staff_list_can_be_filtered_by_role(login_as, admin) -> None:
-    UserFactory(clinic=admin.clinic, role=Role.PHARMACIST)
+    UserFactory(clinic=admin.clinic, role=Role.LAB_TECHNICIAN)
     UserFactory(clinic=admin.clinic, role=Role.STAFF)
 
-    response = login_as(admin).get(STAFF, {"role": "PHARMACIST"})
+    response = login_as(admin).get(STAFF, {"role": "LAB_TECHNICIAN"})
 
-    assert [row["role"] for row in response.data["results"]] == ["PHARMACIST"]
+    assert [row["role"] for row in response.data["results"]] == ["LAB_TECHNICIAN"]
+
+
+def test_the_old_pharmacist_role_no_longer_exists(login_as, admin) -> None:
+    """Phase 12: front desk and pharmacy are one role (STAFF)."""
+    response = login_as(admin).post(
+        STAFF,
+        {
+            "email": "p@example.com",
+            "first_name": "P",
+            "last_name": "Q",
+            "role": "PHARMACIST",
+            "password": "a-long-password-1",
+        },
+    )
+    assert response.status_code == 400
+    assert "role" in response.data
 
 
 def test_deleting_staff_deactivates_instead(login_as, admin) -> None:
@@ -132,7 +148,7 @@ def test_admin_can_reactivate_staff_and_reset_password(login_as, admin) -> None:
     assert staff.check_password(GOOD_PASSWORD)
 
 
-@pytest.mark.parametrize("role", ["STAFF", "DOCTOR", "PHARMACIST", "LAB_TECHNICIAN"])
+@pytest.mark.parametrize("role", ["STAFF", "DOCTOR", "LAB_TECHNICIAN"])
 def test_only_admin_can_use_the_staff_endpoint(login_as, role) -> None:
     assert login_as(UserFactory(role=role)).get(STAFF).status_code == 403
 
@@ -208,7 +224,7 @@ def test_deleting_a_doctor_deactivates_the_login(login_as, admin) -> None:
     assert DoctorProfile.objects.filter(id=doctor.id).exists()
 
 
-@pytest.mark.parametrize("role", ["STAFF", "DOCTOR", "PHARMACIST", "LAB_TECHNICIAN"])
+@pytest.mark.parametrize("role", ["STAFF", "DOCTOR", "LAB_TECHNICIAN"])
 def test_every_role_can_list_doctors_but_only_admin_changes_them(login_as, role) -> None:
     """Staff need the doctor list to book appointments."""
     user = UserFactory(role=role)
@@ -255,12 +271,6 @@ def test_admin_and_staff_manage_patients(login_as, role) -> None:
 
     assert client.patch(url, {"phone": "9811111111"}).status_code == 200
     assert client.delete(url).status_code == 204
-
-
-def test_pharmacist_cannot_use_patients(login_as) -> None:
-    client = login_as(UserFactory(role=Role.PHARMACIST))
-    assert client.get(PATIENTS).status_code == 403
-    assert client.post(PATIENTS, new_patient_data()).status_code == 403
 
 
 def test_lab_technician_searches_and_registers_but_cannot_edit(login_as) -> None:

@@ -72,12 +72,8 @@ def test_admin_and_staff_see_every_invoice(login_as, clinic, one_of_each, role) 
     assert {row["source"] for row in rows} == {"CONSULTATION", "PHARMACY", "LAB"}
 
 
-@pytest.mark.parametrize(
-    ("role", "source"), [(Role.PHARMACIST, "PHARMACY"), (Role.LAB_TECHNICIAN, "LAB")]
-)
-def test_pharmacist_and_lab_technician_see_only_their_invoices(
-    login_as, clinic, one_of_each, role, source
-) -> None:
+@pytest.mark.parametrize(("role", "source"), [(Role.LAB_TECHNICIAN, "LAB")])
+def test_lab_technician_sees_only_lab_invoices(login_as, clinic, one_of_each, role, source) -> None:
     client = login_as(UserFactory(clinic=clinic, role=role))
 
     rows = client.get(INVOICES).data["results"]
@@ -124,7 +120,7 @@ def test_invoices_cannot_be_created_edited_or_deleted_by_hand(login_as, clinic) 
     [
         (Role.STAFF, Source.CONSULTATION),
         (Role.CLINIC_ADMIN, Source.LAB),
-        (Role.PHARMACIST, Source.PHARMACY),
+        (Role.STAFF, Source.PHARMACY),
         (Role.LAB_TECHNICIAN, Source.LAB),
     ],
 )
@@ -198,13 +194,58 @@ def test_staff_cancels_an_unpaid_invoice_with_a_reason(login_as, clinic) -> None
     assert response.data["status"] == "CANCELLED"
 
 
-@pytest.mark.parametrize(
-    ("role", "source"), [(Role.PHARMACIST, Source.PHARMACY), (Role.LAB_TECHNICIAN, Source.LAB)]
-)
-def test_pharmacist_and_lab_technician_cannot_cancel(login_as, clinic, role, source) -> None:
+@pytest.mark.parametrize(("role", "source"), [(Role.LAB_TECHNICIAN, Source.LAB)])
+def test_lab_technician_cannot_cancel(login_as, clinic, role, source) -> None:
     invoice = invoice_for(source, clinic)
     response = login_as(UserFactory(clinic=clinic, role=role)).post(
         f"{INVOICES}{invoice.id}/cancel/", {"reason": "x"}
+    )
+    assert response.status_code == 403
+
+
+# ---------- cancellations the admin reviews (phase 12) ----------
+
+
+def test_front_desk_cancel_is_flagged_for_the_admin(login_as, clinic) -> None:
+    """The front desk may cancel without asking, but the admin must hear about it."""
+    invoice = invoice_for(Source.PHARMACY, clinic)
+    desk = UserFactory(clinic=clinic, role=Role.STAFF, first_name="Front", last_name="Desk")
+
+    data = login_as(desk).post(f"{INVOICES}{invoice.id}/cancel/", {"reason": "Wrong patient"}).data
+
+    assert data["cancel_needs_review"] is True
+    assert data["cancelled_by_name"] == "Front Desk"
+    assert data["cancelled_at"] is not None
+
+
+def test_admin_cancel_needs_no_review(login_as, clinic) -> None:
+    invoice = invoice_for(Source.LAB, clinic)
+    admin = UserFactory(clinic=clinic, role=Role.CLINIC_ADMIN)
+    data = login_as(admin).post(f"{INVOICES}{invoice.id}/cancel/", {"reason": "Duplicate"}).data
+    assert data["cancel_needs_review"] is False
+
+
+def test_admin_lists_and_marks_cancellations_reviewed(login_as, clinic) -> None:
+    flagged = invoice_for(Source.PHARMACY, clinic)
+    login_as(UserFactory(clinic=clinic, role=Role.STAFF)).post(
+        f"{INVOICES}{flagged.id}/cancel/", {"reason": "x"}
+    )
+    invoice_for(Source.LAB, clinic)  # an ordinary unpaid bill
+    admin = login_as(UserFactory(clinic=clinic, role=Role.CLINIC_ADMIN))
+
+    listed = admin.get(INVOICES, {"cancel_needs_review": "true"}).data["results"]
+    assert [row["id"] for row in listed] == [str(flagged.id)]
+
+    response = admin.post(f"{INVOICES}{flagged.id}/mark-reviewed/")
+    assert response.status_code == 200
+    assert response.data["cancel_needs_review"] is False
+
+
+@pytest.mark.parametrize("role", [Role.STAFF, Role.LAB_TECHNICIAN])
+def test_only_the_admin_marks_cancellations_reviewed(login_as, clinic, role) -> None:
+    invoice = invoice_for(Source.LAB, clinic)
+    response = login_as(UserFactory(clinic=clinic, role=role)).post(
+        f"{INVOICES}{invoice.id}/mark-reviewed/"
     )
     assert response.status_code == 403
 
@@ -276,6 +317,8 @@ def test_cancelling_a_visit_cancels_its_unpaid_invoice(login_as, schedule) -> No
     invoice = Invoice.objects.get(appointment_id=appointment_id)
     assert invoice.status == Invoice.Status.CANCELLED
     assert invoice.cancel_reason == "Appointment cancelled: Patient called"
+    # Cancelled with the visit, not by hand: nothing for the admin to review.
+    assert invoice.cancel_needs_review is False
 
 
 def test_cancelling_a_visit_leaves_a_paid_invoice_paid(login_as, schedule) -> None:

@@ -3,7 +3,7 @@
  * and top bar) and behind RequireRole (the same role list as the sidebar).
  *
  * Pages are loaded on first visit (React.lazy), so the first download stays small and
- * a pharmacist never downloads the code of, say, the doctors' screens.
+ * the lab never downloads the code of, say, the doctors' screens.
  */
 import { lazy, Suspense, type ComponentType, type LazyExoticComponent } from 'react'
 import { Navigate, type RouteObject } from 'react-router'

@@ -12,7 +12,7 @@ CLINIC = "/api/v1/clinic/"
 DEPARTMENTS = "/api/v1/departments/"
 
 Role = User.Role
-OTHER_ROLES = [Role.STAFF, Role.DOCTOR, Role.PHARMACIST, Role.LAB_TECHNICIAN]
+OTHER_ROLES = [Role.STAFF, Role.DOCTOR, Role.LAB_TECHNICIAN]
 
 pytestmark = pytest.mark.django_db
 

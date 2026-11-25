@@ -28,7 +28,8 @@ def in_days(days: int) -> datetime.date:
 
 @pytest.fixture
 def pharmacist() -> User:
-    return UserFactory(role=User.Role.PHARMACIST)
+    """Whoever runs the pharmacy: since phase 12, the front desk & pharmacy role."""
+    return UserFactory(role=User.Role.STAFF)
 
 
 @pytest.fixture
@@ -257,7 +258,7 @@ def test_dispensing_marks_the_prescription_and_bills_it(medicine, pharmacist) ->
 
 def test_pharmacy_invoice_uses_vat_when_switched_on(pharmacist) -> None:
     clinic = ClinicFactory(vat_rate=Decimal("13.00"), vat_on_pharmacy=True)
-    pharmacist = UserFactory(clinic=clinic, role=User.Role.PHARMACIST)
+    pharmacist = UserFactory(clinic=clinic, role=User.Role.STAFF)
     medicine = MedicineFactory(clinic=clinic, unit_price=Decimal("100.00"))
     buy(medicine, pharmacist, "P-1", 10, expires_in=200)
 

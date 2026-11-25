@@ -37,13 +37,18 @@ describe('menu by role', () => {
     ])
   })
 
-  it('shows a pharmacist the pharmacy', () => {
-    expect(menu('PHARMACIST')).toEqual([
+  it('shows the front desk & pharmacy the queue, patients AND the pharmacy', () => {
+    expect(menu('STAFF')).toEqual([
       'Dashboard',
+      'Appointments',
+      'Patients',
       'Prescriptions',
+      'Documents',
       'Medicines',
       'Expiry',
+      'Lab orders',
       'Invoices',
+      'Doctors',
     ])
   })
 
@@ -64,7 +69,7 @@ describe('access by address', () => {
 
   it.each([
     ['STAFF', '/patients/abc', true],
-    ['PHARMACIST', '/patients', false],
+    ['LAB_TECHNICIAN', '/patients', false],
     ['DOCTOR', '/medicines', false],
     ['LAB_TECHNICIAN', '/settings', false],
     ['CLINIC_ADMIN', '/settings', true],

@@ -92,12 +92,17 @@ so middleware does not yet know the user.
 ## 4. Roles and row-level rules
 
 - **Endpoint level**: permission classes (`IsClinicAdmin`, `IsStaff`, `IsDoctor`,
-  `IsPharmacist`, `IsLabTechnician`, `IsAdminOrStaff`, `ReadOnly`) combined with `|` and
-  `&`, e.g. `IsClinicAdmin | ReadOnly`.
+  `IsLabTechnician`, `IsAdminOrStaff`, `ReadOnly`) combined with `|` and `&`, e.g.
+  `IsClinicAdmin | ReadOnly`.
 - **Row level**: `get_queryset()` narrows further, e.g. a doctor sees only their own
-  appointments and their own patients' prescriptions, lab orders and documents; a
-  pharmacist sees only PHARMACY invoices. The front desk (STAFF) may also run the
-  pharmacy and dispense, because in a small clinic one person does both.
+  appointments and their own patients' prescriptions, lab orders, documents and
+  history; the lab sees only LAB invoices.
+- **Phase 12 rules (the client's)**: front desk and pharmacy are one role (`STAFF`,
+  "Front desk & pharmacy"; migration `accounts/0005` moved the old pharmacist logins).
+  The admin can do everything except write prescriptions (doctors only). Money: the
+  front desk takes payment, discounts and cancels, but each cancellation is flagged
+  (`Invoice.cancel_needs_review`) until the admin presses Seen (`mark-reviewed/`), and
+  only the admin sees earnings and VAT on the dashboard.
 - The front end hides menus a role cannot use, but **the API is the real guard**: every
   request is checked again here.
 
@@ -167,6 +172,9 @@ Design rules used everywhere:
 | Dispensing | `POST prescriptions/<id>/dispense/` | `dispense_prescription` | earliest expiry first, spill to next batch, expired never used, 409 changes nothing |
 | Lab order | `POST lab-orders/` and its steps | `lab/services.py` | status only moves forward; every row needs a result |
 | One person, one record | `POST`/`PATCH patients/` | `accounts/services.py: find_duplicate_patient` | same name (any capitals) + same phone in a clinic -> 409 with the existing patient; a unique constraint on `(clinic, lower(first_name), lower(last_name), phone)` catches two desks at once |
+| Patient history | `GET patients/<id>/history/` | `records/history.py: patient_history` | visits, last diagnoses, current medicines, numeric lab results as trends; doctor row rule via `get_object()`; not for the lab |
+| Returning patients | `previous_visits` on every visit | `scheduling/views.py` | one subquery annotation for the whole list, no query per row |
+| Bill cancel review | `POST invoices/<id>/cancel/`, `mark-reviewed/` | `billing/services.py: cancel_invoice` | `cancelled_by`, `cancelled_at`; flagged unless the admin cancelled; automatic cancels (with a visit) are not flagged |
 | Lab registration | `POST patients/` by a lab technician; `POST patients/<id>/mark-checked/` | `accounts/views.py`, `accounts/services.py` | flag set by the server, never by the client; only admin/front desk clear it |
 | Dashboard | `GET dashboard/summary/` | `dashboard/services.py` | aggregates in the database, ~20 queries whatever the data size |
 

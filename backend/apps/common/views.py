@@ -9,6 +9,12 @@ class TenantViewSet(ModelViewSet):
     The clinic always comes from the logged-in user, never from the request data.
     Because detail views look objects up inside this filtered queryset, asking for
     another clinic's object gives 404, exactly as if it did not exist.
+
+    NP: Yo project ko sabai bhanda important class yar. Sabai clinic ko data eutai
+        database ma huncha, tara yo class le har request ma "tero clinic ko matra"
+        filter lagaucha. Clinic ko id client bata kahile pani linna, login bhako user
+        bata matra. Arko clinic ko record magyo bhane 404 (403 haina, kina bhane 403
+        le "yo id cha" bhanne kura leak garcha).
     """
 
     # Path from the model to its clinic. Models without their own clinic column

@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.common.permissions import IsClinicAdmin, IsDoctor, IsPharmacist, IsStaff, ReadOnly
+from apps.common.permissions import IsClinicAdmin, IsDoctor, IsStaff, ReadOnly
 from apps.common.views import TenantViewSet
 
 from . import services
@@ -19,10 +19,11 @@ from .serializers import (
     StockMovementSerializer,
 )
 
-# Admin and pharmacist manage the pharmacy; doctors may read medicines to prescribe them.
-# The front desk (STAFF) also runs the pharmacy: in a small clinic one person often
-# registers patients and hands out medicines at the same counter.
-PHARMACY_MANAGERS = IsClinicAdmin | IsPharmacist | IsStaff
+# EN: The admin and the front desk & pharmacy role run the pharmacy; doctors may only
+#     read medicines (to prescribe them).
+# NP: Medicine thapne, stock milaune kaam admin ra front desk/pharmacy le garcha.
+#     Doctor le chai medicine herna matra paucha, prescription lekhna ko lagi.
+PHARMACY_MANAGERS = IsClinicAdmin | IsStaff
 
 
 class MedicineViewSet(TenantViewSet):

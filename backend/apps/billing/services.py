@@ -203,13 +203,40 @@ def pay_invoice(
 
 
 @transaction.atomic
-def cancel_invoice(invoice: Invoice, *, reason: str) -> Invoice:
-    """Cancel an UNPAID invoice. Paid invoices are locked: there are no refunds."""
+def cancel_invoice(invoice: Invoice, *, reason: str, cancelled_by: User | None = None) -> Invoice:
+    """Cancel an UNPAID invoice. Paid invoices are locked: there are no refunds.
+
+    `cancelled_by` is the person who pressed Cancel (None when a cancelled visit or lab
+    order cancels its bill automatically). Anyone but the admin leaves the bill flagged
+    for the admin's review.
+    """
     locked = lock_unpaid_invoice(invoice)
     locked.status = Invoice.Status.CANCELLED
     locked.cancel_reason = reason
-    locked.save(update_fields=["status", "cancel_reason", "updated_at"])
+    locked.cancelled_by = cancelled_by
+    locked.cancelled_at = timezone.now()
+    # NP: Admin aafai le cancel garyo bhane review chaidaina; aru le garyo bhane admin lai khabar.
+    locked.cancel_needs_review = (
+        cancelled_by is not None and cancelled_by.role != User.Role.CLINIC_ADMIN
+    )
+    locked.save(
+        update_fields=[
+            "status",
+            "cancel_reason",
+            "cancelled_by",
+            "cancelled_at",
+            "cancel_needs_review",
+            "updated_at",
+        ]
+    )
     return locked
+
+
+def mark_cancel_reviewed(invoice: Invoice) -> Invoice:
+    """The admin has seen a cancellation made by the front desk & pharmacy."""
+    invoice.cancel_needs_review = False
+    invoice.save(update_fields=["cancel_needs_review", "updated_at"])
+    return invoice
 
 
 @transaction.atomic

@@ -23,13 +23,7 @@ import {
 } from 'lucide-react'
 import type { Role } from '../api/types'
 
-export const CLINIC_ROLES: Role[] = [
-  'CLINIC_ADMIN',
-  'STAFF',
-  'DOCTOR',
-  'PHARMACIST',
-  'LAB_TECHNICIAN',
-]
+export const CLINIC_ROLES: Role[] = ['CLINIC_ADMIN', 'STAFF', 'DOCTOR', 'LAB_TECHNICIAN']
 
 export interface NavItem {
   label: string
@@ -81,7 +75,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Prescriptions',
         path: '/prescriptions',
         icon: ClipboardList,
-        roles: ['CLINIC_ADMIN', 'STAFF', 'DOCTOR', 'PHARMACIST'],
+        roles: ['CLINIC_ADMIN', 'STAFF', 'DOCTOR'],
         description: 'Prescriptions written by doctors, waiting or dispensed.',
       },
       {
@@ -100,14 +94,14 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Medicines',
         path: '/medicines',
         icon: Pill,
-        roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST'],
+        roles: ['CLINIC_ADMIN', 'STAFF'],
         description: 'Medicines, stock by batch and stock history.',
       },
       {
         label: 'Expiry',
         path: '/expiry',
         icon: Hourglass,
-        roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST'],
+        roles: ['CLINIC_ADMIN', 'STAFF'],
         description: 'Batches that expire soon or have expired.',
       },
     ],
@@ -138,7 +132,7 @@ export const NAV_SECTIONS: NavSection[] = [
         label: 'Invoices',
         path: '/invoices',
         icon: Banknote,
-        roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST', 'LAB_TECHNICIAN'],
+        roles: ['CLINIC_ADMIN', 'STAFF', 'LAB_TECHNICIAN'],
         description: 'Bills for visits, medicines and lab tests.',
       },
     ],
@@ -192,21 +186,21 @@ export const OTHER_SCREENS: NavItem[] = [
     label: 'Print bill',
     path: '/print/invoice',
     icon: Banknote,
-    roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST', 'LAB_TECHNICIAN'],
+    roles: ['CLINIC_ADMIN', 'STAFF', 'LAB_TECHNICIAN'],
     description: 'A4 bill.',
   },
   {
     label: 'Print receipt',
     path: '/print/receipt',
     icon: Banknote,
-    roles: ['CLINIC_ADMIN', 'STAFF', 'PHARMACIST', 'LAB_TECHNICIAN'],
+    roles: ['CLINIC_ADMIN', 'STAFF', 'LAB_TECHNICIAN'],
     description: 'Thermal receipt.',
   },
   {
     label: 'Print prescription',
     path: '/print/prescription',
     icon: ClipboardList,
-    roles: ['CLINIC_ADMIN', 'STAFF', 'DOCTOR', 'PHARMACIST'],
+    roles: ['CLINIC_ADMIN', 'STAFF', 'DOCTOR'],
     description: 'A4 prescription.',
   },
   {

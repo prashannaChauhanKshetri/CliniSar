@@ -19,6 +19,7 @@ from apps.common.permissions import (
     ReadOnly,
 )
 from apps.common.views import TenantViewSet
+from apps.records.history import patient_history
 
 from . import services
 from .cookies import clear_refresh_cookie, set_refresh_cookie
@@ -121,7 +122,7 @@ class MeView(generics.RetrieveUpdateAPIView):
 
 
 class StaffViewSet(TenantViewSet):
-    """CRUD staff/: the clinic admin manages front-desk staff, pharmacists and lab technicians."""
+    """CRUD staff/: the clinic admin manages front desk & pharmacy and lab technician logins."""
 
     queryset = User.objects.filter(role__in=StaffSerializer.STAFF_ROLES)
     serializer_class = StaffSerializer
@@ -173,6 +174,9 @@ class PatientViewSet(TenantViewSet):
     search_fields = ["first_name", "last_name", "phone"]
 
     def get_permissions(self):
+        if self.action == "history":
+            # Diagnoses and medicines are medical details: not for the lab's screens.
+            return [(IsAdminOrStaff | IsDoctor)()]
         if self.action in ("list", "retrieve"):
             return [(IsAdminOrStaff | IsLabTechnician | IsDoctor)()]
         if self.action == "create":
@@ -198,6 +202,18 @@ class PatientViewSet(TenantViewSet):
         """The front desk confirms the details of a patient registered at the lab."""
         patient = services.mark_patient_checked(self.get_object())
         return Response(PatientSerializer(patient, context=self.get_serializer_context()).data)
+
+    @extend_schema(request=None, responses={200: dict})
+    @action(detail=True, methods=["get"])
+    def history(self, request, pk=None) -> Response:
+        """Visits, last diagnoses, current medicines and lab trends, for returning patients.
+
+        EN: get_object() applies the same rule as every patient page: a doctor only
+            reaches patients who have a visit with them.
+        NP: Doctor le aafno patient ko matra history herna paucha; arko doctor ko
+            patient ko id halyo bhane 404 aaucha.
+        """
+        return Response(patient_history(self.get_object()))
 
     def get_queryset(self):
         """Row-level rule: a doctor only sees patients who have an appointment with them."""

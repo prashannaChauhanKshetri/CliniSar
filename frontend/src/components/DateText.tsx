@@ -20,7 +20,7 @@ export function DateText({
     )
   return (
     <Stack gap={0}>
-      <Text span size="sm">
+      <Text span size="sm" style={{ whiteSpace: 'nowrap' }}>
         {formatBS(iso)}
       </Text>
       {withAD && (

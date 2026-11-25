@@ -29,7 +29,7 @@ def test_seed_creates_two_clinics_with_every_role() -> None:
     assert Clinic.objects.count() == 2
     for clinic in Clinic.objects.all():
         roles = set(User.objects.filter(clinic=clinic).values_list("role", flat=True))
-        assert roles == {"CLINIC_ADMIN", "STAFF", "DOCTOR", "PHARMACIST", "LAB_TECHNICIAN"}
+        assert roles == {"CLINIC_ADMIN", "STAFF", "DOCTOR", "LAB_TECHNICIAN"}
         assert clinic.users.filter(role="DOCTOR").count() == 3
         assert clinic.patientprofile_set.count() == 10
     assert "admin@sunrise.demo" in output
@@ -110,15 +110,31 @@ def test_seed_lab_has_tests_and_an_order_in_each_state() -> None:
     for clinic in Clinic.objects.all():
         assert LabTest.objects.filter(clinic=clinic).count() == len(seed_demo.LAB_TESTS)
         orders = LabOrder.objects.filter(clinic=clinic)
+        # One in each state, plus two earlier blood-sugar checks for a returning patient.
         assert sorted(orders.values_list("status", flat=True)) == [
+            "COMPLETED",
+            "COMPLETED",
             "COMPLETED",
             "ORDERED",
             "SAMPLE_COLLECTED",
         ]
-        assert orders.filter(appointment__isnull=True).count() == 1  # the self-referred one
-        completed = orders.get(status="COMPLETED")
-        assert completed.invoice.status == "PAID"
-        assert completed.items.count() == 2
+        assert orders.filter(status="SAMPLE_COLLECTED", appointment__isnull=True).count() == 1
+        from_visit = orders.get(status="COMPLETED", appointment__isnull=False)
+        assert from_visit.invoice.status == "PAID"
+        assert from_visit.items.count() == 2
+
+
+def test_seed_gives_a_returning_patient_a_blood_sugar_trend() -> None:
+    """Phase 12: the doctor's history panel has something to draw in the demo."""
+    from apps.records.history import patient_history  # noqa: PLC0415
+
+    run_seed()
+    order = LabOrder.objects.filter(
+        clinic__slug="sunrise", status="COMPLETED", appointment__isnull=False
+    ).get()
+    trends = patient_history(order.patient)["lab_trends"]
+    sugar = next(trend for trend in trends if trend["name"] == "Random Blood Sugar")
+    assert [point["value"] for point in sugar["points"]] == [210.0, 185.0, 162.0]
 
 
 def test_seed_history_fills_both_halves_of_the_month_comparison() -> None:

@@ -40,14 +40,16 @@ export function StatCard({
   icon: Icon,
 }: StatCardProps) {
   return (
-    <Card>
+    // Phones show two cards per row: less padding, and the icon tile is hidden.
+    <Card p={{ base: 'md', sm: 'lg' }}>
       <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
         <Stack gap="sm">
           <Text size="sm" c="dimmed">
             {label}
           </Text>
           <Text
-            fz={String(value).length > 9 ? 22 : 28} // long amounts like "Rs. 4,466.00" stay on one line
+            // long amounts like "Rs. 4,466.00" stay on one line
+            fz={String(value).length > 9 ? { base: 18, sm: 22 } : { base: 24, sm: 28 }}
             fw={700}
             lh={1.1}
             className="tabular-numbers"
@@ -59,7 +61,7 @@ export function StatCard({
             <ChangeText change={changePercent} comparedTo={comparedTo} />
           )}
         </Stack>
-        <ThemeIcon size={48} radius="md" aria-hidden="true">
+        <ThemeIcon size={48} radius="md" aria-hidden="true" visibleFrom="sm">
           <Icon size={24} strokeWidth={1.75} />
         </ThemeIcon>
       </Group>

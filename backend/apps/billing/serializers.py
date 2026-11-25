@@ -23,6 +23,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     received_by_name = serializers.CharField(
         source="received_by.get_full_name", read_only=True, allow_null=True
     )
+    cancelled_by_name = serializers.CharField(
+        source="cancelled_by.get_full_name", read_only=True, allow_null=True
+    )
 
     class Meta:
         model = Invoice
@@ -52,6 +55,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "received_by",
             "received_by_name",
             "cancel_reason",
+            "cancelled_by_name",
+            "cancelled_at",
+            "cancel_needs_review",
             "created_at",
         ]
         read_only_fields = fields

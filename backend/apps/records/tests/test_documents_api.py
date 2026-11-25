@@ -98,8 +98,8 @@ def test_doctor_reads_documents_of_own_patients_only(login_as) -> None:
     assert upload(client, visit.patient, SimpleUploadedFile("a.png", PNG)).status_code == 403
 
 
-@pytest.mark.parametrize("role", [Role.PHARMACIST, Role.LAB_TECHNICIAN])
-def test_pharmacy_and_lab_cannot_see_documents(login_as, role) -> None:
+@pytest.mark.parametrize("role", [Role.LAB_TECHNICIAN])
+def test_lab_cannot_see_documents(login_as, role) -> None:
     assert login_as(UserFactory(role=role)).get(DOCUMENTS).status_code == 403
 
 

@@ -248,7 +248,7 @@ action ends with a plain-words notification from `lib/notify.ts`.
 | Administration | Departments, Staff, Doctors (with working hours), Settings, My profile | Settings say clearly that VAT changes apply to new bills only |
 | Patients | List with search, register (age **or** date of birth, phone optional), patient record with tabs | Tabs show only what the role may open |
 | Appointments | Day view (BS picker, previous/next day), new appointment | Walk-in or booked slot; the summary shows the bill that will be created; a slot taken meanwhile (409) refreshes the free slots |
-| Prescriptions | List (pharmacist starts on "Waiting"), detail, write (doctor) | Dispense explains exactly what happens; a 409 names the missing medicine |
+| Prescriptions | List (front desk & pharmacy starts on "Waiting"), detail, write (doctor) | Dispense explains exactly what happens; a 409 names the missing medicine |
 | Pharmacy | Medicines (Low stock badge), medicine detail (batches, purchase, adjust, history), Expiry | Expiry dates show "Expires soon" / "Expired"; one-click write-off |
 | Lab | Lab tests (report rows editor), lab orders, lab order detail | Results form with section headings, Normal/Abnormal per row, optional file |
 | Bills | List, detail with the same totals as the paper bill | Take payment (discount recalculated by the server), cancel with reason, print |
@@ -260,9 +260,8 @@ action ends with a plain-words notification from `lib/notify.ts`.
 
 | Who | Opens on | Shape |
 | --- | -------- | ----- |
-| Front desk, admin | Today: figures strip, **queue per doctor**, "Needs action" (unpaid bills, lab patients to check, lab work, prescriptions waiting, stock), then clinic figures and charts | `FrontDeskToday.tsx` |
-| Doctor | **Next patient** with Write prescription / Order tests / Seen, the rest of the queue, latest lab results | `DoctorToday.tsx` |
-| Pharmacist (front desk too) | Who is waiting, low stock, expiring batches; Prescriptions opens the **dispensing counter** (list left, stock check right, Dispense disabled while anything is short) | `PharmacyToday.tsx`, `DispensingCounter.tsx` |
+| Front desk & pharmacy, admin | Today: figures strip, **queue per doctor**, "Needs action" (admin: cancelled bills to review; unpaid bills, lab patients to check, lab work, stock), **waiting for medicines**, then clinic figures (earnings for the admin only). Prescriptions opens the **dispensing counter** (stock check, Dispense disabled while anything is short) | `FrontDeskToday.tsx`, `WaitingForMedicines.tsx`, `DispensingCounter.tsx` |
+| Doctor | **Next patient** with a returning-patient summary ("7th visit", last diagnosis, current medicines, an abnormal lab value), then Write prescription / Order tests / Seen; the rest of the queue; latest lab results | `DoctorToday.tsx`, `PatientHistory.tsx` |
 | Lab technician | The **lab board**: to collect, results to enter, done today | `LabToday.tsx`, `LabBoard.tsx` |
 | Appointments | **Queue board** per doctor in calling order (due bookings, walk-ins by number, later bookings), or a list | `QueueBoard.tsx`, `lib/queue.ts` |
 
@@ -270,6 +269,17 @@ The rules behind these boards are small pure functions with unit tests:
 `lib/queue.ts` (calling order, columns per doctor), `lib/stock.ts` (shortages before
 dispensing), `lib/labWork.ts` (lab columns). Visit actions (seen, cancel, prescribe,
 order tests) live in one hook, `useVisitActions`, so every board and list behaves alike.
+
+**Returning patients (phase 12).** The patient page shows a **History** card (admin,
+front desk, doctors; not the lab): visit count, recent visits with diagnoses, the last
+prescription, and lab values over time. A value measured more than once gets a small
+chart (`LabTrendChart.tsx`, loaded only when needed) with the normal range as dashed
+lines; the scale always includes that range (`lib/history.ts: chartDomain`). One-off
+values are a short list. Queue rows show "2nd visit", "3rd visit"... (`visitLabel`).
+
+**Phones.** Every main screen was checked at 390 px for every role: nothing is wider
+than the screen; detail cards use two columns, figures a 2 x 2 grid, tabs slide
+sideways, tables scroll inside their card and dates never break in the middle.
 
 **One person, one record.** Before registering, `PatientForm` looks up patients with
 the same name (`?first_name__iexact=&last_name__iexact=`) and asks "Is this one of

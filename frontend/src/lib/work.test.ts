@@ -21,6 +21,7 @@ function visit(changes: Partial<Appointment>): Appointment {
     reason: '',
     cancel_reason: '',
     created_at: '',
+    previous_visits: 0,
     ...changes,
   }
 }

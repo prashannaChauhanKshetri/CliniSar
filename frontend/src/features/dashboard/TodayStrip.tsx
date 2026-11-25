@@ -15,7 +15,13 @@ export function TodayStrip({ figures }: { figures: Figure[] }) {
   const navigate = useNavigate()
   return (
     <Card padding={0}>
-      <SimpleGrid cols={{ base: 2, md: figures.length }} spacing={0}>
+      {/* Phones: two per row, or all three in one row (an odd count would leave a gap). */}
+      <SimpleGrid
+        className={classes.strip}
+        cols={{ base: figures.length === 3 ? 3 : 2, md: figures.length }}
+        spacing={1}
+        verticalSpacing={1}
+      >
         {figures.map((figure) => (
           <UnstyledButton
             key={figure.label}
@@ -27,7 +33,7 @@ export function TodayStrip({ figures }: { figures: Figure[] }) {
               {figure.label}
             </Text>
             <Text
-              fz={26}
+              fz={{ base: 22, sm: 26 }}
               fw={700}
               lh={1.2}
               className="tabular-numbers"

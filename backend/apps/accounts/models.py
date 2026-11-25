@@ -40,9 +40,12 @@ class User(BaseModel, AbstractUser):
     class Role(models.TextChoices):
         SUPER_ADMIN = "SUPER_ADMIN", "Super admin"
         CLINIC_ADMIN = "CLINIC_ADMIN", "Clinic admin"
-        STAFF = "STAFF", "Staff"
+        # EN: Front desk and pharmacy are ONE role (the client's rule, phase 12): the same
+        #     people register patients, run the queue and hand out medicines.
+        # NP: Yar, front desk ra pharmacy ko kaam eutai manche le garchan, tesaile eutai
+        #     role. Purana "PHARMACIST" login haru migration le yo role ma sareko cha.
+        STAFF = "STAFF", "Front desk & pharmacy"
         DOCTOR = "DOCTOR", "Doctor"
-        PHARMACIST = "PHARMACIST", "Pharmacist"
         LAB_TECHNICIAN = "LAB_TECHNICIAN", "Lab technician"
 
     username = None  # remove AbstractUser's username; people log in with their email

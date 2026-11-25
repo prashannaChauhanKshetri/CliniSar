@@ -1,6 +1,6 @@
 /**
- * Prescriptions. For whoever hands out medicines (pharmacist, or the front desk in a
- * small clinic), "Waiting" opens the dispensing counter (waiting list + stock check +
+ * Prescriptions. For whoever hands out medicines (front desk & pharmacy, or the admin),
+ * "Waiting" opens the dispensing counter (waiting list + stock check +
  * dispense). Other views, and other roles, get the plain list.
  */
 import { Card, SegmentedControl, Text } from '@mantine/core'

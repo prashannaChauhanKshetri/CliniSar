@@ -75,7 +75,7 @@ export interface Department {
 }
 export const departmentsApi = resource<Department>('/departments/')
 
-export type StaffRole = 'STAFF' | 'PHARMACIST' | 'LAB_TECHNICIAN'
+export type StaffRole = 'STAFF' | 'LAB_TECHNICIAN'
 export interface StaffMember {
   id: string
   email: string
@@ -136,6 +136,25 @@ export const patientsApi = {
   ...resource<Patient, PatientInput>('/patients/'),
   /** Front desk confirms the details of a patient registered at the lab. */
   markChecked: (id: string) => post<Patient>(`/patients/${id}/mark-checked/`),
+  /** Returning patients: visits, last diagnoses, current medicines, lab trends. */
+  history: (id: string) => get<PatientHistory>(`/patients/${id}/history/`),
+}
+
+/** GET patients/<id>/history/ (admin, front desk and the patient's doctors). */
+export interface PatientHistory {
+  visits: { count: number; first: string | null; last: string | null }
+  recent_visits: { date: string; doctor_name: string; reason: string; diagnosis: string | null }[]
+  current_medicines: {
+    date: string
+    diagnosis: string
+    items: { medicine: string; dosage: string; frequency: string; duration_days: number }[]
+  } | null
+  lab_trends: {
+    name: string
+    unit: string
+    reference_range: string
+    points: { date: string | null; value: number; flag: 'NORMAL' | 'ABNORMAL' }[]
+  }[]
 }
 
 export const profileApi = {
@@ -183,6 +202,8 @@ export interface Appointment {
   reason: string
   cancel_reason: string
   created_at: string
+  /** Completed visits of this patient before (any doctor). 0 = first time here. */
+  previous_visits: number
 }
 export interface AppointmentInput {
   visit_type: 'SCHEDULED' | 'WALK_IN'
@@ -236,6 +257,10 @@ export interface Invoice {
   paid_at: string | null
   received_by_name: string | null
   cancel_reason: string
+  cancelled_by_name: string | null
+  cancelled_at: string | null
+  /** True while the admin has not seen a cancellation made by the front desk. */
+  cancel_needs_review: boolean
   created_at: string
 }
 export const invoicesApi = {
@@ -244,6 +269,8 @@ export const invoicesApi = {
   pay: (id: string, body: { payment_method: PaymentMethod; discount?: string }) =>
     post<Invoice>(`/invoices/${id}/pay/`, body),
   cancel: (id: string, reason: string) => post<Invoice>(`/invoices/${id}/cancel/`, { reason }),
+  /** Admin only: "I have seen this cancellation." */
+  markReviewed: (id: string) => post<Invoice>(`/invoices/${id}/mark-reviewed/`),
 }
 
 // ---------- prescriptions and pharmacy ----------

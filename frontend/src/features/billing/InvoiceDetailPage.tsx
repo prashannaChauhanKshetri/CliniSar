@@ -13,7 +13,7 @@ import {
   Text,
 } from '@mantine/core'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Banknote, Info, Printer, ReceiptText, X } from 'lucide-react'
+import { Banknote, Eye, Info, Printer, ReceiptText, X } from 'lucide-react'
 import { useState } from 'react'
 import { useParams } from 'react-router'
 import { invoicesApi, type Invoice, type PaymentMethod } from '../../api/resources'
@@ -44,6 +44,19 @@ export function InvoiceDetailPage() {
       void queryClient.invalidateQueries({ queryKey: ['invoices'] })
       setCancelling(false)
       notifySuccess(`Bill ${billNumber(bill)} was cancelled.`)
+    },
+    onError: (error) => notifyError(error),
+  })
+  // EN: The admin confirms having seen a cancellation made by the front desk.
+  // NP: Front desk le bill cancel garyo bhane admin le yaha "Seen" thichcha, ani bell
+  //     bata hatcha.
+  const markReviewed = useMutation({
+    mutationFn: () => invoicesApi.markReviewed(id),
+    onSuccess: (bill) => {
+      queryClient.setQueryData(['invoices', id], bill)
+      void queryClient.invalidateQueries({ queryKey: ['invoices'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      notifySuccess('Marked as seen.')
     },
     onError: (error) => notifyError(error),
   })
@@ -117,9 +130,42 @@ export function InvoiceDetailPage() {
             ]}
           />
           {bill.status === 'CANCELLED' && (
-            <Text size="sm" mt="md" c="danger.6">
-              Cancelled: {bill.cancel_reason}
-            </Text>
+            <Alert
+              mt="md"
+              color={bill.cancel_needs_review ? 'danger' : 'gray'}
+              variant="light"
+              icon={<X size={18} />}
+              title={
+                bill.cancel_needs_review
+                  ? 'Cancelled, waiting for the admin to review'
+                  : 'Cancelled'
+              }
+            >
+              <Stack gap="sm" align="flex-start">
+                <Text size="sm">
+                  {bill.cancel_reason}
+                  {bill.cancelled_by_name && (
+                    <>
+                      {' '}
+                      · by {bill.cancelled_by_name}
+                      {bill.cancelled_at && `, ${formatNepalTime(bill.cancelled_at)}`}
+                    </>
+                  )}
+                </Text>
+                {bill.cancel_needs_review && user?.role === 'CLINIC_ADMIN' && (
+                  <Button
+                    size="xs"
+                    variant="white"
+                    color="danger"
+                    leftSection={<Eye size={14} />}
+                    loading={markReviewed.isPending}
+                    onClick={() => markReviewed.mutate()}
+                  >
+                    Seen
+                  </Button>
+                )}
+              </Stack>
+            </Alert>
           )}
         </Card>
         <Card>

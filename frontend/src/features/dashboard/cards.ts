@@ -89,9 +89,10 @@ const CARDS: Record<string, Builder> = {
 const ORDER: Record<Role, string[]> = {
   SUPER_ADMIN: [],
   CLINIC_ADMIN: ['patients', 'doctors', 'appointments', 'earnings'],
-  STAFF: ['patients', 'doctors', 'appointments', 'earnings'],
+  // The admin handles the money (phase 12): the front desk & pharmacy sees unpaid bills
+  // (it collects them) and stock, but not earnings.
+  STAFF: ['patients', 'appointments', 'unpaid', 'lowStock'],
   DOCTOR: ['patients', 'appointments', 'labPending', 'doctors'],
-  PHARMACIST: ['earnings', 'vat', 'lowStock', 'expiry'],
   LAB_TECHNICIAN: ['earnings', 'vat', 'labPending', 'unpaid'],
 }
 

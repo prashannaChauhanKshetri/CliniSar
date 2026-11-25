@@ -70,6 +70,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(
         source="doctor.department.name", read_only=True, allow_null=True
     )
+    previous_visits = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
@@ -91,8 +92,26 @@ class AppointmentSerializer(serializers.ModelSerializer):
             "cancelled_by",
             "booked_by",
             "created_at",
+            "previous_visits",
         ]
         read_only_fields = fields
+
+    def get_previous_visits(self, appointment: Appointment) -> int:
+        """Completed visits of this patient before (any doctor): 0 = first time here.
+
+        NP: Patient pahila kati choti aaisakyo; 0 bhaye naya patient, natra "returning".
+        Lists annotate it in one query (AppointmentViewSet); a single visit counts here.
+        """
+        annotated = getattr(appointment, "previous_visits", None)
+        if annotated is not None:
+            return annotated
+        return (
+            Appointment.objects.filter(
+                patient_id=appointment.patient_id, status=Appointment.Status.COMPLETED
+            )
+            .exclude(pk=appointment.pk)
+            .count()
+        )
 
 
 class AppointmentCreateSerializer(serializers.Serializer):

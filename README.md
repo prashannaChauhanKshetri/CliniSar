@@ -8,7 +8,10 @@ patients are records the staff manage.
 
 - Register patients (age or date of birth, phone optional; one record per person).
 - Book appointments from the doctors' weekly schedules, and run a walk-in queue.
-- Doctors write prescriptions and order lab tests from the visit.
+- Doctors write prescriptions and order lab tests from the visit, and see each
+  returning patient's history: past diagnoses, current medicines, lab values over time.
+- Front desk & pharmacy is one role; the admin can do everything and handles the money
+  (earnings, and reviewing bills the front desk cancelled).
 - Pharmacy: medicines in batches with expiry dates, dispensing earliest-expiring first,
   purchases, adjustments and write-offs, all kept in a stock history.
 - Lab: tests with report rows, orders with sample and result steps, printed reports.
@@ -65,9 +68,8 @@ npm run dev                         # http://localhost:5173, forwards /api to Dj
 | Role | Sunrise Health Clinic (VAT on pharmacy) | Himal Care Clinic (no VAT) |
 | ---- | --------------------------------------- | -------------------------- |
 | Clinic admin | `admin@sunrise.demo` | `admin@himal.demo` |
-| Front desk | `staff@sunrise.demo` | `staff@himal.demo` |
+| Front desk & pharmacy | `staff@sunrise.demo` | `staff@himal.demo` |
 | Doctors | `dr.anil@`, `dr.sunita@`, `dr.bikash@sunrise.demo` | the same names `@himal.demo` |
-| Pharmacist | `pharmacist@sunrise.demo` | `pharmacist@himal.demo` |
 | Lab technician | `lab@sunrise.demo` | `lab@himal.demo` |
 
 ## Run the checks

@@ -1,5 +1,5 @@
 /** Bills: created automatically by visits, dispensing and lab orders. */
-import { Card, Group, Select, Text, TextInput } from '@mantine/core'
+import { Card, Group, Select, Switch, Text, TextInput } from '@mantine/core'
 import { useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { useNavigate } from 'react-router'
@@ -16,7 +16,8 @@ import { useAuth } from '../auth/useAuth'
 
 export function InvoicesPage() {
   const { user } = useAuth()
-  const seesAllSources = user?.role === 'CLINIC_ADMIN' || user?.role === 'STAFF'
+  const isAdmin = user?.role === 'CLINIC_ADMIN'
+  const seesAllSources = isAdmin || user?.role === 'STAFF'
   const list = useListState()
   const navigate = useNavigate()
   const filters = {
@@ -24,6 +25,8 @@ export function InvoicesPage() {
     status: list.get('status'),
     source: list.get('source'),
     search: list.get('search'),
+    // Admin: bills the front desk cancelled that are waiting for review (from the bell).
+    cancel_needs_review: list.get('cancel_needs_review'),
   }
   const query = useQuery({
     queryKey: ['invoices', filters],
@@ -44,7 +47,7 @@ export function InvoicesPage() {
             defaultValue={filters.search}
             onChange={(e) => list.setFilter('search', e.currentTarget.value)}
             aria-label="Search bills by patient"
-            w={260}
+            w={{ base: '100%', xs: 260 }}
           />
           <Select
             placeholder="Any status"
@@ -57,7 +60,7 @@ export function InvoicesPage() {
             value={filters.status || null}
             onChange={(v) => list.setFilter('status', v)}
             clearable
-            w={160}
+            w={{ base: '100%', xs: 160 }}
           />
           {seesAllSources && (
             <Select
@@ -67,7 +70,16 @@ export function InvoicesPage() {
               value={filters.source || null}
               onChange={(v) => list.setFilter('source', v)}
               clearable
-              w={180}
+              w={{ base: '100%', xs: 180 }}
+            />
+          )}
+          {isAdmin && (
+            <Switch
+              label="Cancelled by the front desk, to review"
+              checked={filters.cancel_needs_review === 'true'}
+              onChange={(e) =>
+                list.setFilter('cancel_needs_review', e.currentTarget.checked ? 'true' : '')
+              }
             />
           )}
         </Group>
@@ -116,7 +128,12 @@ export function InvoicesPage() {
             {
               key: 'status',
               header: 'Status',
-              render: (row) => <StatusBadge status={row.status} />,
+              render: (row) => (
+                <Group gap={4} wrap="nowrap">
+                  <StatusBadge status={row.status} />
+                  {row.cancel_needs_review && <StatusBadge status="PENDING" label="To review" />}
+                </Group>
+              ),
             },
           ]}
         />

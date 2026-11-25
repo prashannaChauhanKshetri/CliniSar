@@ -8,7 +8,6 @@ import { useAuth } from '../auth/useAuth'
 import { DoctorToday } from './DoctorToday'
 import { FrontDeskToday } from './FrontDeskToday'
 import { LabToday } from './LabToday'
-import { PharmacyToday } from './PharmacyToday'
 
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -27,7 +26,6 @@ export function DashboardPage() {
         </Text>
       </div>
       {user.role === 'DOCTOR' && <DoctorToday />}
-      {user.role === 'PHARMACIST' && <PharmacyToday />}
       {user.role === 'LAB_TECHNICIAN' && <LabToday />}
       {(user.role === 'CLINIC_ADMIN' || user.role === 'STAFF') && <FrontDeskToday />}
     </>

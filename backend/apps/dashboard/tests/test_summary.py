@@ -15,7 +15,6 @@ from apps.dashboard import services
 from apps.lab.tests.factories import LabOrderFactory
 from apps.pharmacy.models import MedicineBatch
 from apps.pharmacy.tests.factories import MedicineBatchFactory, MedicineFactory
-from apps.records.tests.factories import PrescriptionFactory
 from apps.scheduling.tests.factories import AppointmentFactory
 
 SUMMARY = "/api/v1/dashboard/summary/"
@@ -260,32 +259,28 @@ def test_doctor_sees_own_visits_and_patients_but_no_money_or_stock(login_as) -> 
 
 
 @pytest.mark.django_db
-def test_pharmacist_sees_pharmacy_money_and_stock_only(login_as) -> None:
-    prescription = PrescriptionFactory()
-    clinic = prescription.clinic
-    pharmacy_bill = InvoiceFactory(
-        clinic=clinic,
-        appointment=None,
-        prescription=prescription,
-        patient=prescription.appointment.patient,
-        source="PHARMACY",
-        status="PAID",
-        total=Decimal("226.00"),
-        vat_amount=Decimal("26.00"),
-    )
-    consultation_bill = InvoiceFactory(clinic=clinic, status="PAID", total=Decimal("700.00"))
-    Invoice.objects.filter(pk__in=[pharmacy_bill.pk, consultation_bill.pk]).update(
-        paid_at=at_noon(days_ago(1))
-    )
+def test_front_desk_sees_work_and_stock_but_not_money(login_as) -> None:
+    """Phase 12: the admin handles the money; the front desk & pharmacy still sees how
+    many bills are unpaid (it collects them) and the stock problems (it runs the pharmacy)."""
+    bill = InvoiceFactory(status="PAID", total=Decimal("700.00"))
+    InvoiceFactory(clinic=bill.clinic, status="UNPAID")
+    Invoice.objects.filter(pk=bill.pk).update(paid_at=at_noon(days_ago(1)))
 
-    data = get_summary(login_as, UserFactory(clinic=clinic, role=Role.PHARMACIST))
+    data = get_summary(login_as, UserFactory(clinic=bill.clinic, role=Role.STAFF))
 
-    assert data["earnings"]["value"] == "200.00"
-    assert data["vat_collected"]["value"] == "26.00"
+    assert data["earnings"] is None and data["vat_collected"] is None
+    assert data["unpaid_invoices"] == 1
     assert data["stock"] is not None
-    assert data["appointments"] is None
-    assert data["total_patients"] is None
-    assert data["pending_lab_orders"] is None
+    assert data["cancelled_bills_to_review"] is None
+
+
+@pytest.mark.django_db
+def test_admin_sees_cancellations_to_review(login_as) -> None:
+    flagged = InvoiceFactory(status="CANCELLED", cancel_needs_review=True)
+    InvoiceFactory(clinic=flagged.clinic, status="CANCELLED")  # reviewed already
+    data = get_summary(login_as, UserFactory(clinic=flagged.clinic, role=Role.CLINIC_ADMIN))
+    assert data["cancelled_bills_to_review"] == 1
+    assert data["earnings"] is not None
 
 
 @pytest.mark.django_db

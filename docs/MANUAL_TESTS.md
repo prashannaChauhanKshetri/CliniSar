@@ -11,9 +11,8 @@ first clinic, Sunrise Health Clinic:
 | Role | Login |
 | ---- | ----- |
 | Clinic admin | `admin@sunrise.demo` |
-| Front desk | `staff@sunrise.demo` |
-| Doctor | `dr.anil@sunrise.demo` |
-| Pharmacist | `pharmacist@sunrise.demo` |
+| Front desk & pharmacy | `staff@sunrise.demo` |
+| Doctor | `dr.anil@sunrise.demo` (`dr.sunita@` sees the returning patient Krishna) |
 | Lab technician | `lab@sunrise.demo` |
 
 The second clinic, Himal Care Clinic, uses the same names with `@himal.demo`.
@@ -32,15 +31,14 @@ Tick each box; note anything odd with the date, the login and what you clicked.
 ## 2. Roles see only their part
 
 For each login, compare the sidebar with this table and try opening a hidden page by
-typing its address (for example `/staff` as the pharmacist): it must show the "not for
+typing its address (for example `/staff` as the front desk): it must show the "not for
 your role" page, never the page itself.
 
 | Role | Sees |
 | ---- | ---- |
 | Clinic admin | Everything, including Staff, Departments, Settings |
-| Front desk | Appointments, Patients, Prescriptions, Documents, Medicines, Expiry, Lab orders, Invoices, Doctors |
+| Front desk & pharmacy | Appointments, Patients, Prescriptions, Documents, Medicines, Expiry, Lab orders, Invoices, Doctors |
 | Doctor | Appointments, My schedule, Patients, Prescriptions, Documents, Lab orders |
-| Pharmacist | Prescriptions, Medicines, Expiry, Invoices (pharmacy bills only) |
 | Lab technician | Lab orders, Lab tests, Invoices (lab bills only) |
 
 ## 3. Clinics never see each other
@@ -71,8 +69,8 @@ your role" page, never the page itself.
 ## 6. Prescriptions and pharmacy
 
 - [ ] As the doctor, write a prescription from a visit.
-- [ ] As the pharmacist (and again as the front desk): the dispensing counter shows it
-      with stock per medicine.
+- [ ] As the front desk & pharmacy (and again as the admin): the dispensing counter
+      shows it with stock per medicine.
 - [ ] A medicine with too little stock shows "short by N" and Dispense stays disabled.
 - [ ] Dispense: stock goes down from the batch that expires first; a pharmacy bill
       appears; "Take payment" opens it.
@@ -95,6 +93,20 @@ your role" page, never the page itself.
 - [ ] Change VAT in Settings, then open an old bill: it is unchanged.
 - [ ] Print the A4 bill, the thermal receipt, a prescription and a lab report:
       Bikram Sambat dates, "Rs. 1,25,000.00" style amounts, clinic letterhead, one page, and the small black CliniSar logo at the end.
+
+## 8b. Money rules and returning patients (phase 12)
+
+- [ ] The front desk's dashboard shows no earnings; the admin's shows "Earned today".
+- [ ] As the front desk, cancel an unpaid bill with a reason: it says "waiting for the
+      admin to review", with your name and the time.
+- [ ] As the admin: the bell says "1 bill was cancelled by the front desk"; the bills list
+      switch "Cancelled by the front desk, to review" shows it; "Seen" clears it.
+- [ ] An old `pharmacist@...` login (if your database had one) still signs in, as
+      "Front desk & pharmacy".
+- [ ] As `dr.sunita@sunrise.demo`, open Krishna Bhandari: History shows the visits, the
+      last prescription and a Random Blood Sugar chart (210 -> 185 -> 162) with dashed
+      normal lines; the queue shows "7th visit" style badges.
+- [ ] The lab technician opening a patient sees no History card.
 
 ## 9. Uploads
 

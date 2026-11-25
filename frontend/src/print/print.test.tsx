@@ -41,6 +41,9 @@ const bill: Invoice = {
   paid_at: '2026-11-18T13:17:00Z',
   received_by_name: 'Pharmacy Counter',
   cancel_reason: '',
+  cancelled_by_name: null,
+  cancelled_at: null,
+  cancel_needs_review: false,
   created_at: '2026-11-18T13:00:00Z',
 }
 

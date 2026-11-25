@@ -278,8 +278,8 @@ def test_doctor_cannot_book(login_as, schedule, patient) -> None:
     assert response.status_code == 403
 
 
-@pytest.mark.parametrize("role", [Role.PHARMACIST, Role.LAB_TECHNICIAN])
-def test_pharmacy_and_lab_cannot_use_appointments(login_as, role) -> None:
+@pytest.mark.parametrize("role", [Role.LAB_TECHNICIAN])
+def test_lab_cannot_use_appointments(login_as, role) -> None:
     assert login_as(UserFactory(role=role)).get(APPOINTMENTS).status_code == 403
 
 

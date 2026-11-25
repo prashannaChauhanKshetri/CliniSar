@@ -91,10 +91,6 @@ def test_staff_and_doctors_read_tests_only(login_as, role) -> None:
     assert client.delete(f"{LAB_TESTS}{lab_test.id}/").status_code == 403
 
 
-def test_pharmacist_cannot_see_lab_tests(login_as) -> None:
-    assert login_as(UserFactory(role=Role.PHARMACIST)).get(LAB_TESTS).status_code == 403
-
-
 def test_a_test_that_was_ordered_cannot_be_deleted(login_as) -> None:
     order = LabOrderFactory()
     admin = UserFactory(clinic=order.clinic, role=Role.CLINIC_ADMIN)
@@ -134,7 +130,7 @@ def test_lab_technician_orders_for_a_self_referred_patient(login_as) -> None:
     assert response.data["consultant"] == "Self"
 
 
-@pytest.mark.parametrize("role", [Role.STAFF, Role.CLINIC_ADMIN, Role.PHARMACIST])
+@pytest.mark.parametrize("role", [Role.STAFF])
 def test_other_roles_cannot_order_tests(login_as, role) -> None:
     user = UserFactory(role=role)
     patient = PatientProfileFactory(clinic=user.clinic)
@@ -232,7 +228,20 @@ def test_cancel_needs_a_reason(login_as) -> None:
     assert client.post(f"{LAB_ORDERS}{order.id}/cancel/", {"reason": "Left"}).status_code == 200
 
 
-@pytest.mark.parametrize("role", [Role.STAFF, Role.CLINIC_ADMIN, Role.DOCTOR])
+def test_admin_can_do_every_lab_step(login_as) -> None:
+    """Phase 12: the admin can do everything, the lab's steps included."""
+    order = LabOrderFactory()
+    admin = login_as(UserFactory(clinic=order.clinic, role=Role.CLINIC_ADMIN))
+    assert admin.post(f"{LAB_ORDERS}{order.id}/collect/").status_code == 200
+    patient = PatientProfileFactory(clinic=order.clinic)
+    lab_test = LabTestFactory(clinic=order.clinic)
+    response = admin.post(
+        LAB_ORDERS, {"patient": str(patient.id), "tests": [str(lab_test.id)]}, format="json"
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.parametrize("role", [Role.STAFF, Role.DOCTOR])
 def test_only_lab_technicians_move_orders_forward(login_as, role) -> None:
     order = LabOrderFactory()
     user = (
@@ -244,10 +253,6 @@ def test_only_lab_technicians_move_orders_forward(login_as, role) -> None:
     assert client.get(f"{LAB_ORDERS}{order.id}/").status_code == 200  # they may look
     for step in ("collect", "cancel"):
         assert client.post(f"{LAB_ORDERS}{order.id}/{step}/", {"reason": "x"}).status_code == 403
-
-
-def test_pharmacist_cannot_see_lab_orders(login_as) -> None:
-    assert login_as(UserFactory(role=Role.PHARMACIST)).get(LAB_ORDERS).status_code == 403
 
 
 def test_doctor_sees_lab_orders_of_own_patients_only(login_as) -> None:
